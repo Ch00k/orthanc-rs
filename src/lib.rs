@@ -38,7 +38,7 @@ impl From<serde_json::error::Error> for OrthancError {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct Modality {
     #[serde(rename(deserialize = "AET"))]
     pub aet: String,
@@ -95,7 +95,7 @@ pub struct Patient {
     pub studies: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct Study {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -119,7 +119,7 @@ pub struct Study {
     pub series: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct Series {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -146,7 +146,7 @@ pub struct Series {
     pub instances: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct Instance {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -180,6 +180,21 @@ pub struct StatusResponse {
 
     #[serde(rename(deserialize = "Status"))]
     pub status: String,
+}
+
+#[derive(Serialize, Debug)]
+struct Modifications {
+    #[serde(rename = "Remove")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    remove: Option<HashMap<String, String>>,
+
+    #[serde(rename = "Replace")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    replace: Option<HashMap<String, String>>,
+
+    #[serde(rename = "Force")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    force: Option<bool>,
 }
 
 pub struct OrthancClient<'a> {
@@ -325,9 +340,9 @@ impl<'a> OrthancClient<'a> {
         self.list("instances")
     }
 
-    pub fn list_modalities_expanded(&self) -> Result<Vec<Modality>, OrthancError> {
+    pub fn list_modalities_expanded(&self) -> Result<HashMap<String, Modality>, OrthancError> {
         let resp = self.get("modalities?expand")?;
-        let json = resp.json::<Vec<Modality>>()?;
+        let json = resp.json::<HashMap<String, Modality>>()?;
         Ok(json)
     }
 
@@ -499,21 +514,6 @@ impl<'a> OrthancClient<'a> {
     }
 }
 
-#[derive(Serialize, Debug)]
-struct Modifications {
-    #[serde(rename = "Remove")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    remove: Option<HashMap<String, String>>,
-
-    #[serde(rename = "Replace")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    replace: Option<HashMap<String, String>>,
-
-    #[serde(rename = "Force")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    force: Option<bool>,
-}
-
 fn check_http_error(resp: &reqwest::blocking::Response) -> Result<(), OrthancError> {
     if resp.status() >= reqwest::StatusCode::BAD_REQUEST {
         //eprintln!("{:?}", resp.text());
@@ -550,6 +550,112 @@ mod tests {
         assert_eq!(cl.server_address, "http://localhost:8042");
         assert_eq!(cl.username, None);
         assert_eq!(cl.password, None);
+    }
+
+    #[test]
+    fn test_list_modalities() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/modalities")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(r#"["foo", "bar", "baz"]"#)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let modalities = cl.list_modalities().unwrap();
+
+        assert_eq!(modalities, ["foo", "bar", "baz"]);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_modalities_expanded() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/modalities")
+            .expect_query_param_exists("expand")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+        {
+            "foo": {
+                "AET": "FOO",
+                "AllowEcho": true,
+                "AllowFind": true,
+                "AllowGet": true,
+                "AllowMove": true,
+                "AllowStore": true,
+                "AllowNAction": false,
+                "AllowEventReport": false,
+                "AllowTranscoding": false,
+                "Host": "localhost",
+                "Manufacturer": "Generic",
+                "Port": 11114
+            },
+            "bar": {
+                "AET": "BAR",
+                "AllowEcho": true,
+                "AllowFind": true,
+                "AllowGet": true,
+                "AllowMove": true,
+                "AllowStore": true,
+                "AllowNAction": false,
+                "AllowEventReport": false,
+                "AllowTranscoding": false,
+                "Host": "remotehost",
+                "Manufacturer": "Generic",
+                "Port": 11113
+            }
+        }
+            "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let modalities = cl.list_modalities_expanded().unwrap();
+
+        assert_eq!(
+            modalities,
+            hashmap! {
+                "foo".to_string() => Modality {
+                    aet: "FOO".to_string(),
+                    host: "localhost".to_string(),
+                    port: 11114,
+                    manufacturer: "Generic".to_string(),
+                    allow_echo: true,
+                    allow_find: true,
+                    allow_get: true,
+                    allow_move: true,
+                    allow_store: true,
+                    allow_n_action: false,
+                    allow_event_report: false,
+                    allow_transcoding: false,
+                },
+                "bar".to_string() => Modality {
+                    aet: "BAR".to_string(),
+                    host: "remotehost".to_string(),
+                    port: 11113,
+                    manufacturer: "Generic".to_string(),
+                    allow_echo: true,
+                    allow_find: true,
+                    allow_get: true,
+                    allow_move: true,
+                    allow_store: true,
+                    allow_n_action: false,
+                    allow_event_report: false,
+                    allow_transcoding: false,
+                }
+            },
+        );
+        assert_eq!(m.times_called(), 1);
     }
 
     #[test]
@@ -624,7 +730,6 @@ mod tests {
 
         let cl = OrthancClient::new(&url, None, None);
         let patients = cl.list_patients_expanded().unwrap();
-        println!("{:#?}", patients);
 
         assert_eq!(
             patients,
