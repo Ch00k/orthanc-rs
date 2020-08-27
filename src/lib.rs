@@ -5,10 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::env;
 use std::fmt;
-
-const DEFAULT_SERVER_ADDRESS: &str = "http://localhost:8042";
 
 #[derive(Debug)]
 pub struct OrthancError {
@@ -88,7 +85,7 @@ pub struct Patient {
     #[serde(rename(deserialize = "IsStable"))]
     pub is_stable: bool,
 
-    #[serde(with = "orthanc_datetime_format", rename(deserialize = "LastUpdate"))]
+    #[serde(with = "datetime_format", rename(deserialize = "LastUpdate"))]
     pub last_update: NaiveDateTime,
 
     #[serde(rename(deserialize = "MainDicomTags"))]
@@ -106,7 +103,7 @@ pub struct Study {
     #[serde(rename(deserialize = "IsStable"))]
     pub is_stable: bool,
 
-    #[serde(with = "orthanc_datetime_format", rename(deserialize = "LastUpdate"))]
+    #[serde(with = "datetime_format", rename(deserialize = "LastUpdate"))]
     pub last_update: NaiveDateTime,
 
     #[serde(rename(deserialize = "MainDicomTags"))]
@@ -133,7 +130,7 @@ pub struct Series {
     #[serde(rename(deserialize = "IsStable"))]
     pub is_stable: bool,
 
-    #[serde(with = "orthanc_datetime_format", rename(deserialize = "LastUpdate"))]
+    #[serde(with = "datetime_format", rename(deserialize = "LastUpdate"))]
     pub last_update: NaiveDateTime,
 
     #[serde(rename(deserialize = "MainDicomTags"))]
@@ -154,7 +151,7 @@ pub struct Instance {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
 
-    #[serde(with = "orthanc_datetime_format", rename(deserialize = "LastUpdate"))]
+    #[serde(with = "datetime_format", rename(deserialize = "LastUpdate"))]
     pub last_update: NaiveDateTime,
 
     #[serde(rename(deserialize = "MainDicomTags"))]
@@ -185,34 +182,19 @@ pub struct StatusResponse {
     pub status: String,
 }
 
-pub struct OrthancClient {
-    server_address: String,
-    username: Option<String>,
-    password: Option<String>,
+pub struct OrthancClient<'a> {
+    server_address: &'a str,
+    username: Option<&'a str>,
+    password: Option<&'a str>,
     client: reqwest::blocking::Client,
 }
 
-impl OrthancClient {
+impl<'a> OrthancClient<'a> {
     pub fn new(
-        server_address: Option<&str>,
-        username: Option<&str>,
-        password: Option<&str>,
-    ) -> OrthancClient {
-        let server_address = match server_address {
-            Some(b) => b.into(),
-            None => env::var("ORC_ORTHANC_SERVER_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.into()),
-        };
-
-        let username = match username {
-            Some(u) => Some(u.into()),
-            None => env::var("ORC_ORTHANC_USERNAME").ok(),
-        };
-
-        let password = match password {
-            Some(p) => Some(p.into()),
-            None => env::var("ORC_ORTHANC_PASSWORD").ok(),
-        };
-
+        server_address: &'a str,
+        username: Option<&'a str>,
+        password: Option<&'a str>,
+    ) -> OrthancClient<'a> {
         OrthancClient {
             server_address,
             username,
@@ -540,7 +522,7 @@ fn check_http_error(resp: &reqwest::blocking::Response) -> Result<(), OrthancErr
     Ok(())
 }
 
-mod orthanc_datetime_format {
+mod datetime_format {
     use chrono::NaiveDateTime;
     use serde::{self, Deserialize, Deserializer};
 
@@ -563,17 +545,11 @@ mod tests {
     use maplit::hashmap;
 
     #[test]
-    fn test_default_server_address() {
-        env::remove_var("ORC_ORTHANC_SERVER_ADDRESS");
-        let cl = OrthancClient::new(None, None, None);
+    fn test_default_fields() {
+        let cl = OrthancClient::new("http://localhost:8042", None, None);
         assert_eq!(cl.server_address, "http://localhost:8042");
-    }
-
-    #[test]
-    fn test_server_address_from_env_var() {
-        env::set_var("ORC_ORTHANC_SERVER_ADDRESS", "http://127.0.0.1:9876");
-        let cl = OrthancClient::new(None, None, None);
-        assert_eq!(cl.server_address, "http://127.0.0.1:9876");
+        assert_eq!(cl.username, None);
+        assert_eq!(cl.password, None);
     }
 
     #[test]
@@ -589,7 +565,7 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(Some(&url), None, None);
+        let cl = OrthancClient::new(&url, None, None);
         let patient_ids = cl.list_patients().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
@@ -646,7 +622,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(Some(&url), None, None);
+        let cl = OrthancClient::new(&url, None, None);
         let patients = cl.list_patients_expanded().unwrap();
         println!("{:#?}", patients);
 
