@@ -8,6 +8,8 @@ use std::collections::HashMap;
 use std::env;
 use std::fmt;
 
+const DEFAULT_SERVER_ADDRESS: &str = "http://localhost:8042";
+
 #[derive(Debug)]
 pub struct OrthancError {
     details: String,
@@ -42,40 +44,40 @@ impl From<serde_json::error::Error> for OrthancError {
 #[derive(Deserialize, Debug)]
 pub struct Modality {
     #[serde(rename(deserialize = "AET"))]
-    aet: String,
+    pub aet: String,
 
     #[serde(rename(deserialize = "Host"))]
-    host: String,
+    pub host: String,
 
     #[serde(rename(deserialize = "Port"))]
-    port: u32,
+    pub port: u32,
 
     #[serde(rename(deserialize = "Manufacturer"))]
-    manufacturer: String,
+    pub manufacturer: String,
 
     #[serde(rename(deserialize = "AllowEcho"))]
-    allow_echo: bool,
+    pub allow_echo: bool,
 
     #[serde(rename(deserialize = "AllowFind"))]
-    allow_find: bool,
+    pub allow_find: bool,
 
     #[serde(rename(deserialize = "AllowGet"))]
-    allow_get: bool,
+    pub allow_get: bool,
 
     #[serde(rename(deserialize = "AllowMove"))]
-    allow_move: bool,
+    pub allow_move: bool,
 
     #[serde(rename(deserialize = "AllowStore"))]
-    allow_store: bool,
+    pub allow_store: bool,
 
     #[serde(rename(deserialize = "AllowNAction"))]
-    allow_n_action: bool,
+    pub allow_n_action: bool,
 
     #[serde(rename(deserialize = "AllowEventReport"))]
-    allow_event_report: bool,
+    pub allow_event_report: bool,
 
     #[serde(rename(deserialize = "AllowTranscoding"))]
-    allow_transcoding: bool,
+    pub allow_transcoding: bool,
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -99,92 +101,92 @@ pub struct Patient {
 #[derive(Deserialize, Debug)]
 pub struct Study {
     #[serde(rename(deserialize = "ID"))]
-    id: String,
+    pub id: String,
 
     #[serde(rename(deserialize = "IsStable"))]
-    is_stable: bool,
+    pub is_stable: bool,
 
     #[serde(with = "orthanc_datetime_format", rename(deserialize = "LastUpdate"))]
-    last_update: NaiveDateTime,
+    pub last_update: NaiveDateTime,
 
     #[serde(rename(deserialize = "MainDicomTags"))]
-    main_dicom_tags: HashMap<String, String>,
+    pub main_dicom_tags: HashMap<String, String>,
 
     #[serde(rename(deserialize = "ParentPatient"))]
-    patient_id: String,
+    pub patient_id: String,
 
     #[serde(rename(deserialize = "PatientMainDicomTags"))]
-    patient_main_dicom_tags: HashMap<String, String>,
+    pub patient_main_dicom_tags: HashMap<String, String>,
 
     #[serde(rename(deserialize = "Series"))]
-    series: Vec<String>,
+    pub series: Vec<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Series {
     #[serde(rename(deserialize = "ID"))]
-    id: String,
+    pub id: String,
 
     #[serde(rename(deserialize = "Status"))]
-    status: String,
+    pub status: String,
 
     #[serde(rename(deserialize = "IsStable"))]
-    is_stable: bool,
+    pub is_stable: bool,
 
     #[serde(with = "orthanc_datetime_format", rename(deserialize = "LastUpdate"))]
-    last_update: NaiveDateTime,
+    pub last_update: NaiveDateTime,
 
     #[serde(rename(deserialize = "MainDicomTags"))]
-    main_dicom_tags: HashMap<String, String>,
+    pub main_dicom_tags: HashMap<String, String>,
 
     #[serde(rename(deserialize = "ParentStudy"))]
-    study_id: String,
+    pub study_id: String,
 
     #[serde(rename(deserialize = "ExpectedNumberOfInstances"))]
-    num_instances: Option<u32>,
+    pub num_instances: Option<u32>,
 
     #[serde(rename(deserialize = "Instances"))]
-    instances: Vec<String>,
+    pub instances: Vec<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Instance {
     #[serde(rename(deserialize = "ID"))]
-    id: String,
+    pub id: String,
 
     #[serde(with = "orthanc_datetime_format", rename(deserialize = "LastUpdate"))]
-    last_update: NaiveDateTime,
+    pub last_update: NaiveDateTime,
 
     #[serde(rename(deserialize = "MainDicomTags"))]
-    main_dicom_tags: HashMap<String, String>,
+    pub main_dicom_tags: HashMap<String, String>,
 
     #[serde(rename(deserialize = "ParentSeries"))]
-    series_id: String,
+    pub series_id: String,
 
     #[serde(rename(deserialize = "IndexInSeries"))]
-    index_in_series: u32,
+    pub index_in_series: u32,
 
     #[serde(rename(deserialize = "FileUuid"))]
-    file_uuid: String,
+    pub file_uuid: String,
 
     #[serde(rename(deserialize = "FileSize"))]
-    file_size: u32,
+    pub file_size: u32,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct StatusResponse {
     #[serde(rename(deserialize = "ID"))]
-    id: String,
+    pub id: String,
 
     #[serde(rename(deserialize = "Path"))]
-    path: String,
+    pub path: String,
 
     #[serde(rename(deserialize = "Status"))]
-    status: String,
+    pub status: String,
 }
 
 pub struct OrthancClient {
-    base_url: String,
+    server_address: String,
     username: Option<String>,
     password: Option<String>,
     client: reqwest::blocking::Client,
@@ -192,13 +194,13 @@ pub struct OrthancClient {
 
 impl OrthancClient {
     pub fn new(
-        base_url: Option<&str>,
+        server_address: Option<&str>,
         username: Option<&str>,
         password: Option<&str>,
     ) -> OrthancClient {
-        let base_url = match base_url {
+        let server_address = match server_address {
             Some(b) => b.into(),
-            None => env::var("ORC_ORTHANC_URL").unwrap_or("http://localhost:8042".into()),
+            None => env::var("ORC_ORTHANC_SERVER_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.into()),
         };
 
         let username = match username {
@@ -212,7 +214,7 @@ impl OrthancClient {
         };
 
         OrthancClient {
-            base_url,
+            server_address,
             username,
             password,
             client: reqwest::blocking::Client::new(),
@@ -220,7 +222,7 @@ impl OrthancClient {
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, OrthancError> {
-        let url = format!("{}/{}", self.base_url, &path);
+        let url = format!("{}/{}", self.server_address, &path);
         let request = self.client.get(&url);
 
         let request = match (&self.username, &self.password) {
@@ -238,7 +240,7 @@ impl OrthancClient {
     }
 
     fn get_bytes(&self, path: &str) -> Result<Bytes, OrthancError> {
-        let url = format!("{}/{}", self.base_url, &path);
+        let url = format!("{}/{}", self.server_address, &path);
         let request = self.client.get(&url);
 
         let request = match (&self.username, &self.password) {
@@ -258,7 +260,7 @@ impl OrthancClient {
     }
 
     fn post(&self, path: &str, data: Value) -> Result<Value, OrthancError> {
-        let url = format!("{}/{}", self.base_url, path);
+        let url = format!("{}/{}", self.server_address, path);
         let request = self.client.post(&url).json(&data);
 
         let request = match (&self.username, &self.password) {
@@ -278,7 +280,7 @@ impl OrthancClient {
     }
 
     fn post_bytes(&self, path: &str, data: Vec<u8>) -> Result<StatusResponse, OrthancError> {
-        let url = format!("{}/{}", self.base_url, path);
+        let url = format!("{}/{}", self.server_address, path);
         let request = self.client.post(&url).body(data);
 
         let request = match (&self.username, &self.password) {
@@ -298,7 +300,7 @@ impl OrthancClient {
     }
 
     fn delete(&self, path: &str) -> Result<(), OrthancError> {
-        let url = format!("{}/{}", self.base_url, &path);
+        let url = format!("{}/{}", self.server_address, &path);
         let request = self.client.delete(&url);
 
         let request = match (&self.username, &self.password) {
@@ -550,5 +552,134 @@ mod orthanc_datetime_format {
     {
         let s = String::deserialize(deserializer)?;
         NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use httpmock::{Method, Mock, MockServer};
+    use maplit::hashmap;
+
+    #[test]
+    fn test_default_server_address() {
+        env::remove_var("ORC_ORTHANC_SERVER_ADDRESS");
+        let cl = OrthancClient::new(None, None, None);
+        assert_eq!(cl.server_address, "http://localhost:8042");
+    }
+
+    #[test]
+    fn test_server_address_from_env_var() {
+        env::set_var("ORC_ORTHANC_SERVER_ADDRESS", "http://127.0.0.1:9876");
+        let cl = OrthancClient::new(None, None, None);
+        assert_eq!(cl.server_address, "http://127.0.0.1:9876");
+    }
+
+    #[test]
+    fn test_list_patients() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/patients")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(r#"["foo", "bar", "baz"]"#)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(Some(&url), None, None);
+        let patient_ids = cl.list_patients().unwrap();
+
+        assert_eq!(patient_ids, ["foo", "bar", "baz"]);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_patients_expanded() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/patients")
+            .expect_query_param_exists("expand")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+        [
+            {
+                "ID": "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493",
+                "IsStable": true,
+                "LastUpdate": "20200101T154617",
+                "MainDicomTags": {
+                    "OtherPatientIDs": "",
+                    "PatientBirthDate": "19670101",
+                    "PatientID": "123456789",
+                    "PatientName": "Rick Sanchez",
+                    "PatientSex": "M"
+                },
+                "Studies": [
+                    "e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04"
+                ],
+                "Type": "Patient"
+            },
+            {
+                "ID": "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe",
+                "IsStable": true,
+                "LastUpdate": "20200826T174531",
+                "MainDicomTags": {
+                    "OtherPatientIDs": "",
+                    "PatientBirthDate": "19440101",
+                    "PatientID": "987654321",
+                    "PatientName": "Morty Smith"
+                },
+                "Studies": [
+                    "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5"
+                ],
+                "Type": "Patient"
+            }
+        ]
+            "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(Some(&url), None, None);
+        let patients = cl.list_patients_expanded().unwrap();
+        println!("{:#?}", patients);
+
+        assert_eq!(
+            patients,
+            [
+                Patient {
+                    id: "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493".to_string(),
+                    is_stable: true,
+                    last_update: NaiveDate::from_ymd(2020, 1, 1).and_hms(15, 46, 17),
+                    main_dicom_tags: hashmap! {
+                        "OtherPatientIDs".to_string() => "".to_string(),
+                        "PatientBirthDate".to_string() => "19670101".to_string(),
+                        "PatientID".to_string() => "123456789".to_string(),
+                        "PatientName".to_string() => "Rick Sanchez".to_string(),
+                        "PatientSex".to_string() => "M".to_string()
+                    },
+                    studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()].to_vec(),
+                },
+                Patient {
+                    id: "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe".to_string(),
+                    is_stable: true,
+                    last_update: NaiveDate::from_ymd(2020, 8, 26).and_hms(17, 45, 31),
+                    main_dicom_tags: hashmap! {
+                        "OtherPatientIDs".to_string() => "".to_string(),
+                        "PatientBirthDate".to_string() => "19440101".to_string(),
+                        "PatientID".to_string() => "987654321".to_string(),
+                        "PatientName".to_string() => "Morty Smith".to_string(),
+                    },
+                    studies: ["63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string()].to_vec(),
+                },
+            ]
+        );
+        assert_eq!(m.times_called(), 1);
     }
 }
