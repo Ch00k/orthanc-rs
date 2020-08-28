@@ -170,19 +170,67 @@ pub struct Instance {
     pub file_size: u32,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct StatusResponse {
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+pub struct UploadStatusResponse {
+    #[serde(rename(deserialize = "ID"))]
+    pub id: String,
+
+    #[serde(rename(deserialize = "Status"))]
+    pub status: String,
+
+    #[serde(rename(deserialize = "Path"))]
+    pub path: String,
+
+    #[serde(rename(deserialize = "ParentPatient"))]
+    parent_patient: String,
+
+    #[serde(rename(deserialize = "ParentStudy"))]
+    parent_study: String,
+
+    #[serde(rename(deserialize = "ParentSeries"))]
+    parent_series: String,
+}
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+pub struct RemainingAncestorResponse {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
 
     #[serde(rename(deserialize = "Path"))]
     pub path: String,
 
-    #[serde(rename(deserialize = "Status"))]
-    pub status: String,
+    #[serde(rename(deserialize = "Type"))]
+    pub entity_type: String,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+pub struct ErrorResponse {
+    #[serde(rename(deserialize = "Method"))]
+    method: String,
+
+    #[serde(rename(deserialize = "Uri"))]
+    uri: String,
+
+    #[serde(rename(deserialize = "Message"))]
+    message: String,
+
+    #[serde(rename(deserialize = "Details"))]
+    details: String,
+
+    #[serde(rename(deserialize = "HttpStatus"))]
+    http_status: String,
+
+    #[serde(rename(deserialize = "HttpError"))]
+    http_error: String,
+
+    #[serde(rename(deserialize = "OrthancStatus"))]
+    orthanc_status: String,
+
+    #[serde(rename(deserialize = "OrthancError"))]
+    orthanc_error: String,
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq)]
 struct Modifications {
     #[serde(rename = "Remove")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -265,18 +313,17 @@ impl<'a> OrthancClient<'a> {
         Ok(json)
     }
 
-    fn post_bytes(&self, path: &str, data: Vec<u8>) -> Result<StatusResponse, OrthancError> {
+    fn post_bytes(&self, path: &str, data: &[u8]) -> Result<Response, OrthancError> {
         let url = format!("{}/{}", self.server_address, path);
-        let mut request = self.client.post(&url).body(data);
+        // TODO: .to_vec() here is probably not a good idea
+        let mut request = self.client.post(&url).body(data.to_vec());
         request = self.add_auth(request);
         let resp = request.send()?;
 
         if let Err(err) = check_http_error(&resp) {
             return Err(err);
         }
-
-        let json = resp.json::<StatusResponse>()?;
-        Ok(json)
+        Ok(resp)
     }
 
     fn delete(&self, path: &str) -> Result<(), OrthancError> {
@@ -485,9 +532,11 @@ impl<'a> OrthancClient<'a> {
         self.modify("studies", id, replace, remove, None)
     }
 
-    pub fn upload_dicom(&self, data: Vec<u8>) -> Result<StatusResponse, OrthancError> {
+    pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse, OrthancError> {
         let path = "/instances";
-        self.post_bytes(path, data)
+        let resp = self.post_bytes(path, data)?;
+        let json = resp.json::<UploadStatusResponse>()?;
+        Ok(json)
     }
 }
 
@@ -537,7 +586,7 @@ mod tests {
     }
 
     #[test]
-    fn test_auth_get() {
+    fn test_get() {
         let mock_server = MockServer::start();
         let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
 
@@ -553,6 +602,89 @@ mod tests {
         let resp = cl.get("foo").unwrap();
 
         assert_eq!(resp.text().unwrap(), "bar");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_bytes() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_status(200)
+            .return_body("bar")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.get_bytes("foo").unwrap();
+
+        assert_eq!(resp, "bar");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_post() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .expect_body("\"bar\"")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_header("Content-Type", "application/json")
+            .return_status(200)
+            .return_body("\"baz\"")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.post("foo", serde_json::json!("bar")).unwrap();
+
+        assert_eq!(resp, "baz");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_post_bytes() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .expect_body("bar")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_header("Content-Type", "application/json")
+            .return_status(200)
+            .return_body("baz")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.post_bytes("foo", "bar".as_bytes()).unwrap();
+
+        assert_eq!(resp.text().unwrap(), "baz");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_delete() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::DELETE)
+            .expect_path("/foo")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_status(200)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.delete("foo").unwrap();
+
+        assert_eq!(resp, ());
         assert_eq!(m.times_called(), 1);
     }
 
@@ -589,36 +721,36 @@ mod tests {
             .return_header("Content-Type", "application/json")
             .return_body(
                 r#"
-        {
-            "foo": {
-                "AET": "FOO",
-                "AllowEcho": true,
-                "AllowFind": true,
-                "AllowGet": true,
-                "AllowMove": true,
-                "AllowStore": true,
-                "AllowNAction": false,
-                "AllowEventReport": false,
-                "AllowTranscoding": false,
-                "Host": "localhost",
-                "Manufacturer": "Generic",
-                "Port": 11114
-            },
-            "bar": {
-                "AET": "BAR",
-                "AllowEcho": true,
-                "AllowFind": true,
-                "AllowGet": true,
-                "AllowMove": true,
-                "AllowStore": true,
-                "AllowNAction": false,
-                "AllowEventReport": false,
-                "AllowTranscoding": false,
-                "Host": "remotehost",
-                "Manufacturer": "Generic",
-                "Port": 11113
-            }
-        }
+                    {
+                        "foo": {
+                            "AET": "FOO",
+                            "AllowEcho": true,
+                            "AllowFind": true,
+                            "AllowGet": true,
+                            "AllowMove": true,
+                            "AllowStore": true,
+                            "AllowNAction": false,
+                            "AllowEventReport": false,
+                            "AllowTranscoding": false,
+                            "Host": "localhost",
+                            "Manufacturer": "Generic",
+                            "Port": 11114
+                        },
+                        "bar": {
+                            "AET": "BAR",
+                            "AllowEcho": true,
+                            "AllowFind": true,
+                            "AllowGet": true,
+                            "AllowMove": true,
+                            "AllowStore": true,
+                            "AllowNAction": false,
+                            "AllowEventReport": false,
+                            "AllowTranscoding": false,
+                            "Host": "remotehost",
+                            "Manufacturer": "Generic",
+                            "Port": 11113
+                        }
+                    }
             "#,
             )
             .create_on(&mock_server);
@@ -695,40 +827,40 @@ mod tests {
             .return_header("Content-Type", "application/json")
             .return_body(
                 r#"
-        [
-            {
-                "ID": "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493",
-                "IsStable": true,
-                "LastUpdate": "20200101T154617",
-                "MainDicomTags": {
-                    "OtherPatientIDs": "",
-                    "PatientBirthDate": "19670101",
-                    "PatientID": "123456789",
-                    "PatientName": "Rick Sanchez",
-                    "PatientSex": "M"
-                },
-                "Studies": [
-                    "e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04"
-                ],
-                "Type": "Patient"
-            },
-            {
-                "ID": "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe",
-                "IsStable": true,
-                "LastUpdate": "20200826T174531",
-                "MainDicomTags": {
-                    "OtherPatientIDs": "",
-                    "PatientBirthDate": "19440101",
-                    "PatientID": "987654321",
-                    "PatientName": "Morty Smith"
-                },
-                "Studies": [
-                    "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5"
-                ],
-                "Type": "Patient"
-            }
-        ]
-            "#,
+                    [
+                        {
+                            "ID": "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493",
+                            "IsStable": true,
+                            "LastUpdate": "20200101T154617",
+                            "MainDicomTags": {
+                                "OtherPatientIDs": "",
+                                "PatientBirthDate": "19670101",
+                                "PatientID": "123456789",
+                                "PatientName": "Rick Sanchez",
+                                "PatientSex": "M"
+                            },
+                            "Studies": [
+                                "e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04"
+                            ],
+                            "Type": "Patient"
+                        },
+                        {
+                            "ID": "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe",
+                            "IsStable": true,
+                            "LastUpdate": "20200826T174531",
+                            "MainDicomTags": {
+                                "OtherPatientIDs": "",
+                                "PatientBirthDate": "19440101",
+                                "PatientID": "987654321",
+                                "PatientName": "Morty Smith"
+                            },
+                            "Studies": [
+                                "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5"
+                            ],
+                            "Type": "Patient"
+                        }
+                    ]
+               "#,
             )
             .create_on(&mock_server);
 
