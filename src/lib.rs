@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use chrono::NaiveDateTime;
-use reqwest;
+use reqwest::blocking::{Client, RequestBuilder, Response};
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -201,7 +201,7 @@ pub struct OrthancClient<'a> {
     server_address: &'a str,
     username: Option<&'a str>,
     password: Option<&'a str>,
-    client: reqwest::blocking::Client,
+    client: Client,
 }
 
 impl<'a> OrthancClient<'a> {
@@ -214,23 +214,24 @@ impl<'a> OrthancClient<'a> {
             server_address,
             username,
             password,
-            client: reqwest::blocking::Client::new(),
+            client: Client::new(),
         }
     }
 
-    fn get(&self, path: &str) -> Result<reqwest::blocking::Response, OrthancError> {
-        let url = format!("{}/{}", self.server_address, &path);
-        let request = self.client.get(&url);
-
-        let request = match (&self.username, &self.password) {
-            (Some(username), Some(password)) => request.basic_auth(username, Some(password)),
+    fn add_auth(&self, request: RequestBuilder) -> RequestBuilder {
+        match (&self.username, &self.password) {
+            (Some(u), Some(p)) => request.basic_auth(u, Some(p)),
             _ => request,
-        };
+        }
+    }
 
+    fn get(&self, path: &str) -> Result<Response, OrthancError> {
+        let url = format!("{}/{}", self.server_address, &path);
+        let mut request = self.client.get(&url);
+        request = self.add_auth(request);
         let resp = request.send()?;
 
         if let Err(err) = check_http_error(&resp) {
-            // TODO: I don't understand why and how this works
             return Err(err);
         }
         Ok(resp)
@@ -238,17 +239,11 @@ impl<'a> OrthancClient<'a> {
 
     fn get_bytes(&self, path: &str) -> Result<Bytes, OrthancError> {
         let url = format!("{}/{}", self.server_address, &path);
-        let request = self.client.get(&url);
-
-        let request = match (&self.username, &self.password) {
-            (Some(username), Some(password)) => request.basic_auth(username, Some(password)),
-            _ => request,
-        };
-
+        let mut request = self.client.get(&url);
+        request = self.add_auth(request);
         let resp = request.send()?;
 
         if let Err(err) = check_http_error(&resp) {
-            // TODO: I don't understand why and how this works
             return Err(err);
         }
 
@@ -258,17 +253,11 @@ impl<'a> OrthancClient<'a> {
 
     fn post(&self, path: &str, data: Value) -> Result<Value, OrthancError> {
         let url = format!("{}/{}", self.server_address, path);
-        let request = self.client.post(&url).json(&data);
-
-        let request = match (&self.username, &self.password) {
-            (Some(username), Some(password)) => request.basic_auth(username, Some(password)),
-            _ => request,
-        };
-
+        let mut request = self.client.post(&url).json(&data);
+        request = self.add_auth(request);
         let resp = request.send()?;
 
         if let Err(err) = check_http_error(&resp) {
-            // TODO: I don't understand why and how this works
             return Err(err);
         }
 
@@ -278,17 +267,11 @@ impl<'a> OrthancClient<'a> {
 
     fn post_bytes(&self, path: &str, data: Vec<u8>) -> Result<StatusResponse, OrthancError> {
         let url = format!("{}/{}", self.server_address, path);
-        let request = self.client.post(&url).body(data);
-
-        let request = match (&self.username, &self.password) {
-            (Some(username), Some(password)) => request.basic_auth(username, Some(password)),
-            _ => request,
-        };
-
+        let mut request = self.client.post(&url).body(data);
+        request = self.add_auth(request);
         let resp = request.send()?;
 
         if let Err(err) = check_http_error(&resp) {
-            // TODO: I don't understand why and how this works
             return Err(err);
         }
 
@@ -298,17 +281,11 @@ impl<'a> OrthancClient<'a> {
 
     fn delete(&self, path: &str) -> Result<(), OrthancError> {
         let url = format!("{}/{}", self.server_address, &path);
-        let request = self.client.delete(&url);
-
-        let request = match (&self.username, &self.password) {
-            (Some(username), Some(password)) => request.basic_auth(username, Some(password)),
-            _ => request,
-        };
-
+        let mut request = self.client.delete(&url);
+        request = self.add_auth(request);
         let resp = request.send()?;
 
         if let Err(err) = check_http_error(&resp) {
-            // TODO: I don't understand why and how this works
             return Err(err);
         }
         Ok(())
@@ -514,7 +491,7 @@ impl<'a> OrthancClient<'a> {
     }
 }
 
-fn check_http_error(resp: &reqwest::blocking::Response) -> Result<(), OrthancError> {
+fn check_http_error(resp: &Response) -> Result<(), OrthancError> {
     if resp.status() >= reqwest::StatusCode::BAD_REQUEST {
         //eprintln!("{:?}", resp.text());
         return Err(OrthancError::new(resp.status().as_str()));
@@ -550,6 +527,33 @@ mod tests {
         assert_eq!(cl.server_address, "http://localhost:8042");
         assert_eq!(cl.username, None);
         assert_eq!(cl.password, None);
+    }
+
+    #[test]
+    fn test_auth() {
+        let cl = OrthancClient::new("http://localhost:8042", Some("foo"), Some("bar"));
+        assert_eq!(cl.username, Some("foo"));
+        assert_eq!(cl.password, Some("bar"));
+    }
+
+    #[test]
+    fn test_auth_get() {
+        let mock_server = MockServer::start();
+        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_status(200)
+            .return_body("bar")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.get("foo").unwrap();
+
+        assert_eq!(resp.text().unwrap(), "bar");
+        assert_eq!(m.times_called(), 1);
     }
 
     #[test]
