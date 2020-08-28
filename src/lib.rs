@@ -588,7 +588,7 @@ mod tests {
     #[test]
     fn test_get() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::GET)
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn test_get_bytes() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::GET)
@@ -628,7 +628,7 @@ mod tests {
     #[test]
     fn test_post() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::POST)
@@ -650,7 +650,7 @@ mod tests {
     #[test]
     fn test_post_bytes() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::POST)
@@ -672,7 +672,7 @@ mod tests {
     #[test]
     fn test_delete() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::DELETE)
@@ -691,7 +691,7 @@ mod tests {
     #[test]
     fn test_list_modalities() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::GET)
@@ -711,7 +711,7 @@ mod tests {
     #[test]
     fn test_list_modalities_expanded() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::GET)
@@ -797,7 +797,7 @@ mod tests {
     #[test]
     fn test_list_patients() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::GET)
@@ -817,7 +817,7 @@ mod tests {
     #[test]
     fn test_list_patients_expanded() {
         let mock_server = MockServer::start();
-        let url = format!("http://{}:{}", &mock_server.host(), &mock_server.port());
+        let url = mock_server.url("");
 
         let m = Mock::new()
             .expect_method(Method::GET)
