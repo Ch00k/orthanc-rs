@@ -1,40 +1,49 @@
 use bytes::Bytes;
 use chrono::NaiveDateTime;
-use reqwest::blocking::{Client, RequestBuilder, Response};
+use reqwest::blocking::{Client, RequestBuilder};
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
+use std::str;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct OrthancError {
     details: String,
+    error_response: Option<ErrorResponse>,
 }
 
 impl fmt::Display for OrthancError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.details)
+        write!(f, "{}: {:#?}", self.details, self.error_response)
     }
 }
 
 impl OrthancError {
-    pub fn new(msg: &str) -> OrthancError {
+    pub fn new(msg: &str, error_response: Option<ErrorResponse>) -> OrthancError {
         OrthancError {
             details: msg.to_string(),
+            error_response,
         }
     }
 }
 
 impl From<reqwest::Error> for OrthancError {
     fn from(e: reqwest::Error) -> Self {
-        OrthancError::new(&e.to_string())
+        OrthancError::new(&e.to_string(), None)
     }
 }
 
 impl From<serde_json::error::Error> for OrthancError {
     fn from(e: serde_json::error::Error) -> Self {
-        OrthancError::new(&e.to_string())
+        OrthancError::new(&e.to_string(), None)
+    }
+}
+
+impl From<str::Utf8Error> for OrthancError {
+    fn from(e: str::Utf8Error) -> Self {
+        OrthancError::new(&e.to_string(), None)
     }
 }
 
@@ -218,13 +227,13 @@ pub struct ErrorResponse {
     details: String,
 
     #[serde(rename(deserialize = "HttpStatus"))]
-    http_status: String,
+    http_status: u16,
 
     #[serde(rename(deserialize = "HttpError"))]
     http_error: String,
 
     #[serde(rename(deserialize = "OrthancStatus"))]
-    orthanc_status: String,
+    orthanc_status: u16,
 
     #[serde(rename(deserialize = "OrthancError"))]
     orthanc_error: String,
@@ -273,16 +282,18 @@ impl<'a> OrthancClient<'a> {
         }
     }
 
-    fn get(&self, path: &str) -> Result<Response, OrthancError> {
+    fn get(&self, path: &str) -> Result<String, OrthancError> {
         let url = format!("{}/{}", self.server_address, &path);
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
+        let status = resp.status();
+        let body = resp.text()?;
 
-        if let Err(err) = check_http_error(&resp) {
+        if let Err(err) = check_http_error(status, &body) {
             return Err(err);
         }
-        Ok(resp)
+        Ok(body)
     }
 
     fn get_bytes(&self, path: &str) -> Result<Bytes, OrthancError> {
@@ -290,57 +301,62 @@ impl<'a> OrthancClient<'a> {
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
+        let status = resp.status();
+        let body = resp.bytes()?;
+        let text = str::from_utf8(&body)?;
 
-        if let Err(err) = check_http_error(&resp) {
+        if let Err(err) = check_http_error(status, text) {
             return Err(err);
         }
-
-        let bytes = resp.bytes()?;
-        Ok(bytes)
+        Ok(body)
     }
 
-    fn post(&self, path: &str, data: Value) -> Result<Value, OrthancError> {
+    fn post(&self, path: &str, data: Value) -> Result<String, OrthancError> {
         let url = format!("{}/{}", self.server_address, path);
         let mut request = self.client.post(&url).json(&data);
         request = self.add_auth(request);
         let resp = request.send()?;
+        let status = resp.status();
+        let body = resp.text()?;
 
-        if let Err(err) = check_http_error(&resp) {
+        if let Err(err) = check_http_error(status, &body) {
             return Err(err);
         }
-
-        let json = resp.json::<Value>()?;
-        Ok(json)
+        Ok(body)
     }
 
-    fn post_bytes(&self, path: &str, data: &[u8]) -> Result<Response, OrthancError> {
+    fn post_bytes(&self, path: &str, data: &[u8]) -> Result<String, OrthancError> {
         let url = format!("{}/{}", self.server_address, path);
         // TODO: .to_vec() here is probably not a good idea
         let mut request = self.client.post(&url).body(data.to_vec());
         request = self.add_auth(request);
         let resp = request.send()?;
+        let status = resp.status();
+        let body = resp.text()?;
 
-        if let Err(err) = check_http_error(&resp) {
+        if let Err(err) = check_http_error(status, &body) {
             return Err(err);
         }
-        Ok(resp)
+        Ok(body)
     }
 
-    fn delete(&self, path: &str) -> Result<(), OrthancError> {
+    fn delete(&self, path: &str) -> Result<String, OrthancError> {
         let url = format!("{}/{}", self.server_address, &path);
         let mut request = self.client.delete(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
+        let status = resp.status();
+        let body = resp.text()?;
 
-        if let Err(err) = check_http_error(&resp) {
+        if let Err(err) = check_http_error(status, &body) {
             return Err(err);
         }
-        Ok(())
+        Ok(body)
     }
 
     fn list(&self, entity: &str) -> Result<Vec<String>, OrthancError> {
         let resp = self.get(entity)?;
-        let json = resp.json::<Vec<String>>()?;
+        let json: Vec<String> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -366,87 +382,79 @@ impl<'a> OrthancClient<'a> {
 
     pub fn list_modalities_expanded(&self) -> Result<HashMap<String, Modality>, OrthancError> {
         let resp = self.get("modalities?expand")?;
-        let json = resp.json::<HashMap<String, Modality>>()?;
+        let json: HashMap<String, Modality> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn list_patients_expanded(&self) -> Result<Vec<Patient>, OrthancError> {
         let resp = self.get("patients?expand")?;
-        let json = resp.json::<Vec<Patient>>()?;
+        let json: Vec<Patient> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn list_studies_expanded(&self) -> Result<Vec<Study>, OrthancError> {
         let resp = self.get("studies?expand")?;
-        let json = resp.json::<Vec<Study>>()?;
+        let json: Vec<Study> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn list_series_expanded(&self) -> Result<Vec<Series>, OrthancError> {
         let resp = self.get("series?expand")?;
-        let json = resp.json::<Vec<Series>>()?;
+        let json: Vec<Series> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn list_instances_expanded(&self) -> Result<Vec<Instance>, OrthancError> {
         let resp = self.get("instances?expand")?;
-        let json = resp.json::<Vec<Instance>>()?;
+        let json: Vec<Instance> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_patient(&self, id: &str) -> Result<Patient, OrthancError> {
-        let path = format!("/patients/{}", id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Patient>()?;
+        let resp = self.get(&format!("/patients/{}", id))?;
+        let json: Patient = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_study(&self, id: &str) -> Result<Study, OrthancError> {
-        let path = format!("/studies/{}", id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Study>()?;
+        let resp = self.get(&format!("/studies/{}", id))?;
+        let json: Study = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_series(&self, id: &str) -> Result<Series, OrthancError> {
-        let path = format!("/series/{}", id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Series>()?;
+        let resp = self.get(&format!("/series/{}", id))?;
+        let json: Series = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance(&self, id: &str) -> Result<Instance, OrthancError> {
-        let path = format!("/instances/{}", id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Instance>()?;
+        let resp = self.get(&format!("/instances/{}", id))?;
+        let json: Instance = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance_tags(&self, id: &str) -> Result<Value, OrthancError> {
-        let path = format!("/instances/{}/simplified-tags", id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Value>()?;
+        let resp = self.get(&format!("/instances/{}/simplified-tags", id))?;
+        let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance_tags_expanded(&self, id: &str) -> Result<Value, OrthancError> {
-        let path = format!("/instances/{}/tags", id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Value>()?;
+        let resp = self.get(&format!("/instances/{}/tags", id))?;
+        let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance_content(&self, id: &str) -> Result<Vec<String>, OrthancError> {
-        let path = format!("/instances/{}/content", id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Vec<String>>()?;
+        let resp = self.get(&format!("/instances/{}/content", id))?;
+        let json: Vec<String> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance_tag(&self, instance_id: &str, tag_id: &str) -> Result<Value, OrthancError> {
-        let path = format!("/instances/{}/content/{}", instance_id, tag_id);
-        let resp = self.get(&path)?;
-        let json = resp.json::<Value>()?;
+        let resp = self.get(&format!("/instances/{}/content/{}", instance_id, tag_id))?;
+        let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -460,41 +468,52 @@ impl<'a> OrthancClient<'a> {
         self.get_bytes(&path)
     }
 
-    pub fn delete_patient(&self, id: &str) -> Result<(), OrthancError> {
-        let path = format!("/patients/{}", id);
-        self.delete(&path)
+    // TODO: Implement structured response for all delete methods
+    pub fn delete_patient(&self, id: &str) -> Result<Value, OrthancError> {
+        let resp = self.delete(&format!("/patients/{}", id))?;
+        let json: Value = serde_json::from_str(&resp)?;
+        Ok(json)
     }
 
-    pub fn delete_study(&self, id: &str) -> Result<(), OrthancError> {
-        let path = format!("/studies/{}", id);
-        println!("{:?}", path);
-        self.delete(&path)
+    pub fn delete_study(&self, id: &str) -> Result<Value, OrthancError> {
+        let resp = self.delete(&format!("/studies/{}", id))?;
+        let json: Value = serde_json::from_str(&resp)?;
+        Ok(json)
     }
 
-    pub fn delete_series(&self, id: &str) -> Result<(), OrthancError> {
-        let path = format!("/series/{}", id);
-        self.delete(&path)
+    pub fn delete_series(&self, id: &str) -> Result<Value, OrthancError> {
+        let resp = self.delete(&format!("/series/{}", id))?;
+        let json: Value = serde_json::from_str(&resp)?;
+        Ok(json)
     }
 
-    pub fn delete_instance(&self, id: &str) -> Result<(), OrthancError> {
-        let path = format!("/instances/{}", id);
-        self.delete(&path)
+    pub fn delete_instance(&self, id: &str) -> Result<Value, OrthancError> {
+        let resp = self.delete(&format!("/instances/{}", id))?;
+        let json: Value = serde_json::from_str(&resp)?;
+        Ok(json)
     }
 
     pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<Value, OrthancError> {
-        let path = format!("/modalities/{}/echo", modality);
         let mut data = HashMap::new();
         // TODO: This does not seem idiomatic
         if timeout != None {
             data.insert("Timeout", timeout);
         }
-        self.post(&path, serde_json::json!(data))
+        let resp = self.post(
+            &format!("/modalities/{}/echo", modality),
+            serde_json::json!(data),
+        )?;
+        let json: Value = serde_json::from_str(&resp)?;
+        Ok(json)
     }
 
-    // TODO: Implement async send (https://book.orthanc-server.com/users/advanced-rest.html#jobs)
     pub fn store(&self, modality: &str, id: &str) -> Result<Value, OrthancError> {
-        let path = format!("/modalities/{}/store", modality);
-        self.post(&path, serde_json::json!(id))
+        let resp = self.post(
+            &format!("/modalities/{}/store", modality),
+            serde_json::json!(id),
+        )?;
+        let json: Value = serde_json::from_str(&resp)?;
+        Ok(json)
     }
 
     fn modify(
@@ -505,13 +524,17 @@ impl<'a> OrthancClient<'a> {
         remove: Option<HashMap<String, String>>,
         force: Option<bool>,
     ) -> Result<Value, OrthancError> {
-        let path = format!("/{}/{}/modify", entity, id);
         let data = Modifications {
             remove,
             replace,
             force,
         };
-        self.post(&path, serde_json::to_value(data)?)
+        let resp = self.post(
+            &format!("/{}/{}/modify", entity, id),
+            serde_json::to_value(data)?,
+        )?;
+        let json: Value = serde_json::from_str(&resp)?;
+        Ok(json)
     }
 
     pub fn modify_patient(
@@ -533,17 +556,21 @@ impl<'a> OrthancClient<'a> {
     }
 
     pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse, OrthancError> {
-        let path = "/instances";
-        let resp = self.post_bytes(path, data)?;
-        let json = resp.json::<UploadStatusResponse>()?;
+        let resp = self.post_bytes("/instances", data)?;
+        let json: UploadStatusResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 }
 
-fn check_http_error(resp: &Response) -> Result<(), OrthancError> {
-    if resp.status() >= reqwest::StatusCode::BAD_REQUEST {
-        //eprintln!("{:?}", resp.text());
-        return Err(OrthancError::new(resp.status().as_str()));
+fn check_http_error(
+    response_status: reqwest::StatusCode,
+    response_body: &str,
+) -> Result<(), OrthancError> {
+    if response_status >= reqwest::StatusCode::BAD_REQUEST {
+        return Err(OrthancError::new(
+            response_status.as_str(),
+            serde_json::from_str(response_body)?,
+        ));
     }
     Ok(())
 }
@@ -601,7 +628,7 @@ mod tests {
         let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get("foo").unwrap();
 
-        assert_eq!(resp.text().unwrap(), "bar");
+        assert_eq!(resp, "bar");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -637,7 +664,7 @@ mod tests {
             .expect_header("Authorization", "Basic Zm9vOmJhcg==")
             .return_header("Content-Type", "application/json")
             .return_status(200)
-            .return_body("\"baz\"")
+            .return_body("baz")
             .create_on(&mock_server);
 
         let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
@@ -665,7 +692,7 @@ mod tests {
         let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
         let resp = cl.post_bytes("foo", "bar".as_bytes()).unwrap();
 
-        assert_eq!(resp.text().unwrap(), "baz");
+        assert_eq!(resp, "baz");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -684,7 +711,55 @@ mod tests {
         let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
         let resp = cl.delete("foo").unwrap();
 
-        assert_eq!(resp, ());
+        assert_eq!(resp, "");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_error_response() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .return_status(400)
+            .return_body(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.get("foo");
+
+        assert!(resp.is_err());
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "400".to_string(),
+                error_response: Some(ErrorResponse {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string(),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
         assert_eq!(m.times_called(), 1);
     }
 
