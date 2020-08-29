@@ -11,6 +11,7 @@ use std::str;
 #[derive(Debug, Eq, PartialEq)]
 pub struct OrthancError {
     details: String,
+    // TODO: This is pretty ugly
     error_response: Option<ErrorResponse>,
 }
 
