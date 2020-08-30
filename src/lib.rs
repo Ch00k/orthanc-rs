@@ -513,18 +513,17 @@ impl<'a> OrthancClient<'a> {
         Ok(json)
     }
 
-    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<Value, OrthancError> {
+    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<(), OrthancError> {
         let mut data = HashMap::new();
         // TODO: This does not seem idiomatic
         if timeout != None {
             data.insert("Timeout", timeout);
         }
-        let resp = self.post(
+        self.post(
             &format!("modalities/{}/echo", modality),
             serde_json::json!(data),
-        )?;
-        let json: Value = serde_json::from_str(&resp)?;
-        Ok(json)
+        )
+        .map(|_| ())
     }
 
     pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResponse, OrthancError> {
@@ -1130,6 +1129,69 @@ mod tests {
                     path: "/patients/bar".to_string(),
                     entity_type: "Patient".to_string(),
                 })
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_echo() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/modalities/foo/echo")
+            .return_status(200)
+            .return_body("{}")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.echo("foo", None).unwrap();
+
+        assert_eq!(resp, ());
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_echo_with_timeout() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/modalities/foo/echo")
+            .expect_json_body(&hashmap! {"Timeout" => 42})
+            .return_status(200)
+            .return_body("{}")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.echo("foo", Some(42)).unwrap();
+
+        assert_eq!(resp, ());
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_echo_failed() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/modalities/foo/echo")
+            .return_status(500)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.echo("foo", None);
+
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "500".to_string(),
+                error_response: None
             }
         );
         assert_eq!(m.times_called(), 1);
