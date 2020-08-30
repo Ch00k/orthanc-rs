@@ -202,7 +202,7 @@ pub struct UploadStatusResponse {
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
-pub struct RemainingAncestorResponse {
+pub struct RemainingAncestor {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
 
@@ -211,6 +211,12 @@ pub struct RemainingAncestorResponse {
 
     #[serde(rename(deserialize = "Type"))]
     pub entity_type: String,
+}
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+pub struct RemainingAncestorResponse {
+    #[serde(rename(deserialize = "RemainingAncestor"))]
+    remaining_ancestor: Option<RemainingAncestor>,
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -483,28 +489,27 @@ impl<'a> OrthancClient<'a> {
         self.get_bytes(&path)
     }
 
-    // TODO: Implement structured response for all delete methods
-    pub fn delete_patient(&self, id: &str) -> Result<Value, OrthancError> {
-        let resp = self.delete(&format!("/patients/{}", id))?;
-        let json: Value = serde_json::from_str(&resp)?;
+    pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+        let resp = self.delete(&format!("patients/{}", id))?;
+        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_study(&self, id: &str) -> Result<Value, OrthancError> {
-        let resp = self.delete(&format!("/studies/{}", id))?;
-        let json: Value = serde_json::from_str(&resp)?;
+    pub fn delete_study(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+        let resp = self.delete(&format!("studies/{}", id))?;
+        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_series(&self, id: &str) -> Result<Value, OrthancError> {
-        let resp = self.delete(&format!("/series/{}", id))?;
-        let json: Value = serde_json::from_str(&resp)?;
+    pub fn delete_series(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+        let resp = self.delete(&format!("series/{}", id))?;
+        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_instance(&self, id: &str) -> Result<Value, OrthancError> {
-        let resp = self.delete(&format!("/instances/{}", id))?;
-        let json: Value = serde_json::from_str(&resp)?;
+    pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+        let resp = self.delete(&format!("instance/{}", id))?;
+        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -1063,6 +1068,68 @@ mod tests {
                 parent_resounces: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
                 instances_count: 42,
                 failed_instances_count: 17
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_delete_patient() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::DELETE)
+            .expect_path("/patients/foo")
+            .return_status(200)
+            .return_body(r#"{"RemainingAncestor": null}"#)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.delete_patient("foo").unwrap();
+
+        assert_eq!(
+            resp,
+            RemainingAncestorResponse {
+                remaining_ancestor: None
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_delete_study() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::DELETE)
+            .expect_path("/studies/foo")
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "RemainingAncestor": {
+                            "ID": "bar",
+                            "Path": "/patients/bar",
+                            "Type": "Patient"
+                        }
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.delete_study("foo").unwrap();
+
+        assert_eq!(
+            resp,
+            RemainingAncestorResponse {
+                remaining_ancestor: Some(RemainingAncestor {
+                    id: "bar".to_string(),
+                    path: "/patients/bar".to_string(),
+                    entity_type: "Patient".to_string(),
+                })
             }
         );
         assert_eq!(m.times_called(), 1);
