@@ -214,6 +214,27 @@ pub struct RemainingAncestorResponse {
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
+pub struct StoreResponse {
+    #[serde(rename(deserialize = "Description"))]
+    description: String,
+
+    #[serde(rename(deserialize = "LocalAet"))]
+    locat_aet: String,
+
+    #[serde(rename(deserialize = "RemoteAet"))]
+    remote_aet: String,
+
+    #[serde(rename(deserialize = "ParentResources"))]
+    parent_resounces: Vec<String>,
+
+    #[serde(rename(deserialize = "InstancesCount"))]
+    instances_count: u64,
+
+    #[serde(rename(deserialize = "FailedInstancesCount"))]
+    failed_instances_count: u64,
+}
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct ErrorResponse {
     #[serde(rename(deserialize = "Method"))]
     method: String,
@@ -501,19 +522,19 @@ impl<'a> OrthancClient<'a> {
             data.insert("Timeout", timeout);
         }
         let resp = self.post(
-            &format!("/modalities/{}/echo", modality),
+            &format!("modalities/{}/echo", modality),
             serde_json::json!(data),
         )?;
         let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn store(&self, modality: &str, id: &str) -> Result<Value, OrthancError> {
+    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResponse, OrthancError> {
         let resp = self.post(
-            &format!("/modalities/{}/store", modality),
-            serde_json::json!(id),
+            &format!("modalities/{}/store", modality),
+            serde_json::json!(ids),
         )?;
-        let json: Value = serde_json::from_str(&resp)?;
+        let json: StoreResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -756,7 +777,6 @@ mod tests {
         let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get("foo");
 
-        assert!(resp.is_err());
         assert_eq!(
             resp.unwrap_err(),
             OrthancError {
@@ -1009,6 +1029,48 @@ mod tests {
                     studies: ["63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string()].to_vec(),
                 },
             ]
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_store() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/modalities/them/store")
+            //.expect_body(r#"["bar", "baz", "qux"]"#)
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    {
+                       "Description" : "REST API",
+                       "FailedInstancesCount" : 17,
+                       "InstancesCount" : 42,
+                       "LocalAet" : "US",
+                       "ParentResources" : [ "bar", "baz", "qux" ],
+                       "RemoteAet" : "THEM"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.store("them", &["bar", "baz", "qux"]).unwrap();
+
+        assert_eq!(
+            resp,
+            StoreResponse {
+                description: "REST API".to_string(),
+                locat_aet: "US".to_string(),
+                remote_aet: "THEM".to_string(),
+                parent_resounces: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
+                instances_count: 42,
+                failed_instances_count: 17
+            }
         );
         assert_eq!(m.times_called(), 1);
     }
