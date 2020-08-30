@@ -468,25 +468,18 @@ impl<'a> OrthancClient<'a> {
         Ok(json)
     }
 
-    pub fn get_instance_content(&self, id: &str) -> Result<Vec<String>, OrthancError> {
-        let resp = self.get(&format!("/instances/{}/content", id))?;
-        let json: Vec<String> = serde_json::from_str(&resp)?;
-        Ok(json)
-    }
-
-    pub fn get_instance_tag(&self, instance_id: &str, tag_id: &str) -> Result<Value, OrthancError> {
-        let resp = self.get(&format!("/instances/{}/content/{}", instance_id, tag_id))?;
-        let json: Value = serde_json::from_str(&resp)?;
-        Ok(json)
-    }
-
-    pub fn get_instance_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
-        let path = format!("/instances/{}/file", id);
+    pub fn get_patient_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
+        let path = format!("/patients/{}/archive", id);
         self.get_bytes(&path)
     }
 
     pub fn get_study_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
         let path = format!("/studies/{}/archive", id);
+        self.get_bytes(&path)
+    }
+
+    pub fn get_instance_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
+        let path = format!("/instances/{}/file", id);
         self.get_bytes(&path)
     }
 
