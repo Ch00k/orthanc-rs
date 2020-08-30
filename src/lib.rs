@@ -556,6 +556,15 @@ impl<'a> OrthancClient<'a> {
         self.modify("studies", id, replace, remove, None)
     }
 
+    pub fn modify_series(
+        &self,
+        id: &str,
+        replace: Option<HashMap<String, String>>,
+        remove: Option<HashMap<String, String>>,
+    ) -> Result<Value, OrthancError> {
+        self.modify("series", id, replace, remove, None)
+    }
+
     pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse, OrthancError> {
         let resp = self.post_bytes("/instances", data)?;
         let json: UploadStatusResponse = serde_json::from_str(&resp)?;
@@ -583,7 +592,7 @@ mod datetime_format {
     use chrono::NaiveDateTime;
     use serde::{self, Deserialize, Deserializer};
 
-    const FORMAT: &'static str = "%Y%m%dT%H%M%S";
+    const FORMAT: &str = "%Y%m%dT%H%M%S";
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
     where
