@@ -568,6 +568,9 @@ fn check_http_error(
     response_body: &str,
 ) -> Result<(), OrthancError> {
     if response_status >= reqwest::StatusCode::BAD_REQUEST {
+        if response_body.is_empty() {
+            return Err(OrthancError::new(response_status.as_str(), None));
+        };
         return Err(OrthancError::new(
             response_status.as_str(),
             serde_json::from_str(response_body)?,
@@ -759,6 +762,31 @@ mod tests {
                     orthanc_status: 15,
                     orthanc_error: "Bad file format".to_string(),
                 },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_error_response_no_body() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .return_status(404)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.get("foo");
+
+        assert!(resp.is_err());
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "404".to_string(),
+                error_response: None,
             },
         );
         assert_eq!(m.times_called(), 1);
