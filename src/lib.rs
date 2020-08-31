@@ -267,6 +267,21 @@ pub struct ErrorResponse {
     orthanc_error: String,
 }
 
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+pub struct ModifyResponse {
+    #[serde(rename(deserialize = "ID"))]
+    id: String,
+
+    #[serde(rename(deserialize = "PatientID"))]
+    patient_id: String,
+
+    #[serde(rename(deserialize = "Path"))]
+    path: String,
+
+    #[serde(rename(deserialize = "Type"))]
+    entity_type: String,
+}
+
 #[derive(Serialize, Debug, Eq, PartialEq)]
 struct Modifications {
     #[serde(rename = "Remove")]
@@ -542,17 +557,17 @@ impl<'a> OrthancClient<'a> {
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
         force: Option<bool>,
-    ) -> Result<Value, OrthancError> {
+    ) -> Result<ModifyResponse, OrthancError> {
         let data = Modifications {
             remove,
             replace,
             force,
         };
         let resp = self.post(
-            &format!("/{}/{}/modify", entity, id),
+            &format!("{}/{}/modify", entity, id),
             serde_json::to_value(data)?,
         )?;
-        let json: Value = serde_json::from_str(&resp)?;
+        let json: ModifyResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -561,7 +576,7 @@ impl<'a> OrthancClient<'a> {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
-    ) -> Result<Value, OrthancError> {
+    ) -> Result<ModifyResponse, OrthancError> {
         self.modify("patients", id, replace, remove, Some(true))
     }
 
@@ -570,7 +585,7 @@ impl<'a> OrthancClient<'a> {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
-    ) -> Result<Value, OrthancError> {
+    ) -> Result<ModifyResponse, OrthancError> {
         self.modify("studies", id, replace, remove, None)
     }
 
@@ -579,7 +594,7 @@ impl<'a> OrthancClient<'a> {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
-    ) -> Result<Value, OrthancError> {
+    ) -> Result<ModifyResponse, OrthancError> {
         self.modify("series", id, replace, remove, None)
     }
 
@@ -1067,6 +1082,55 @@ mod tests {
                 parent_resounces: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
                 instances_count: 42,
                 failed_instances_count: 17
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_modify() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/studies/foo/modify")
+            .expect_json_body(&Modifications {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                force: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Study"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .modify(
+                "studies",
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Study".to_string(),
             }
         );
         assert_eq!(m.times_called(), 1);
