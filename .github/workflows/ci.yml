@@ -20,9 +20,11 @@ jobs:
           toolchain: stable
 
       - name: run tests
-        run: cargo install cargo-tarpaulin && cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+        run: |
+          cargo install cargo-tarpaulin && \
+          cargo tarpaulin --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
-      - name: upload coverag
+      - name: upload coverage
         uses: codecov/codecov-action@v1
         with:
           fail_ci_if_error: true
