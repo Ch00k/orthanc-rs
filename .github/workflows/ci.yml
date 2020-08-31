@@ -11,8 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     name: test
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: run tests
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - run: cargo test
+        run: cargo install cargo-tarpaulin && cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+
+      - name: upload coverag
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true
