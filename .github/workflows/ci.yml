@@ -14,10 +14,12 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: run tests
+      - name: prepare rust env
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
+      - name: run tests
         run: cargo install cargo-tarpaulin && cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
 
       - name: upload coverag
