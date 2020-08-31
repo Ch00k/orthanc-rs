@@ -423,7 +423,9 @@ impl<'a> OrthancClient<'a> {
         self.list("instances")
     }
 
-    pub fn list_modalities_expanded(&self) -> Result<HashMap<String, Modality>, OrthancError> {
+    pub fn list_modalities_expanded(
+        &self,
+    ) -> Result<HashMap<String, Modality>, OrthancError> {
         let resp = self.get("modalities?expand")?;
         let json: HashMap<String, Modality> = serde_json::from_str(&resp)?;
         Ok(json)
@@ -504,25 +506,37 @@ impl<'a> OrthancClient<'a> {
         self.get_bytes(&path)
     }
 
-    pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_patient(
+        &self,
+        id: &str,
+    ) -> Result<RemainingAncestorResponse, OrthancError> {
         let resp = self.delete(&format!("patients/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_study(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_study(
+        &self,
+        id: &str,
+    ) -> Result<RemainingAncestorResponse, OrthancError> {
         let resp = self.delete(&format!("studies/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_series(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_series(
+        &self,
+        id: &str,
+    ) -> Result<RemainingAncestorResponse, OrthancError> {
         let resp = self.delete(&format!("series/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_instance(
+        &self,
+        id: &str,
+    ) -> Result<RemainingAncestorResponse, OrthancError> {
         let resp = self.delete(&format!("instance/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
@@ -541,7 +555,11 @@ impl<'a> OrthancClient<'a> {
         .map(|_| ())
     }
 
-    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResponse, OrthancError> {
+    pub fn store(
+        &self,
+        modality: &str,
+        ids: &[&str],
+    ) -> Result<StoreResponse, OrthancError> {
         let resp = self.post(
             &format!("modalities/{}/store", modality),
             serde_json::json!(ids),
@@ -797,7 +815,8 @@ mod tests {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
-                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string(),
+                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
+                        .to_string(),
                     http_status: 400,
                     http_error: "Bad Request".to_string(),
                     orthanc_status: 15,
@@ -1026,7 +1045,8 @@ mod tests {
                         "PatientName".to_string() => "Rick Sanchez".to_string(),
                         "PatientSex".to_string() => "M".to_string()
                     },
-                    studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()].to_vec(),
+                    studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()]
+                        .to_vec(),
                 },
                 Patient {
                     id: "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe".to_string(),
@@ -1038,7 +1058,8 @@ mod tests {
                         "PatientID".to_string() => "987654321".to_string(),
                         "PatientName".to_string() => "Morty Smith".to_string(),
                     },
-                    studies: ["63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string()].to_vec(),
+                    studies: ["63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string()]
+                        .to_vec(),
                 },
             ]
         );
@@ -1079,7 +1100,11 @@ mod tests {
                 description: "REST API".to_string(),
                 locat_aet: "US".to_string(),
                 remote_aet: "THEM".to_string(),
-                parent_resounces: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
+                parent_resounces: vec![
+                    "bar".to_string(),
+                    "baz".to_string(),
+                    "qux".to_string()
+                ],
                 instances_count: 42,
                 failed_instances_count: 17
             }
