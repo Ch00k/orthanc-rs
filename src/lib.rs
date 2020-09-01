@@ -617,7 +617,7 @@ impl<'a> OrthancClient<'a> {
     }
 
     pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse, OrthancError> {
-        let resp = self.post_bytes("/instances", data)?;
+        let resp = self.post_bytes("instances", data)?;
         let json: UploadStatusResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
@@ -1612,5 +1612,113 @@ mod tests {
             }
         );
         assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_upload_dicom() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/instances")
+            .expect_body("quux")
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "foo",
+                        "ParentPatient": "bar",
+                        "ParentSeries": "baz",
+                        "ParentStudy": "qux",
+                        "Path": "/instances/foo",
+                        "Status": "Success"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.upload_dicom("quux".as_bytes()).unwrap();
+
+        assert_eq!(
+            resp,
+            UploadStatusResponse {
+                id: "foo".to_string(),
+                status: "Success".to_string(),
+                path: "/instances/foo".to_string(),
+                parent_patient: "bar".to_string(),
+                parent_study: "qux".to_string(),
+                parent_series: "baz".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_check_http_error_ok() {
+        let res = check_http_error(reqwest::StatusCode::PERMANENT_REDIRECT, "foo");
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_check_http_error_error() {
+        let res = check_http_error(
+            reqwest::StatusCode::BAD_REQUEST,
+            r#"
+                {
+                    "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                    "HttpError" : "Bad Request",
+                    "HttpStatus" : 400,
+                    "Message" : "Bad file format",
+                    "Method" : "POST",
+                    "OrthancError" : "Bad file format",
+                    "OrthancStatus" : 15,
+                    "Uri" : "/instances"
+                }
+            "#,
+        );
+        assert_eq!(
+            res.unwrap_err(),
+            OrthancError {
+                details: "400".to_string(),
+                error_response: Some(ErrorResponse {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
+                        .to_string(),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
+    }
+
+    #[test]
+    fn test_check_http_error_error_empty_body() {
+        let res = check_http_error(reqwest::StatusCode::UNAUTHORIZED, "");
+        assert_eq!(
+            res.unwrap_err(),
+            OrthancError {
+                details: "401".to_string(),
+                error_response: None
+            },
+        );
+    }
+
+    // TODO: Firgure out how to handle this
+    #[test]
+    fn test_check_http_error_error_random_body() {
+        let res = check_http_error(reqwest::StatusCode::GATEWAY_TIMEOUT, "foo bar baz");
+        assert_eq!(
+            res.unwrap_err(),
+            OrthancError {
+                details: "expected ident at line 1 column 2".to_string(),
+                error_response: None
+            },
+        );
     }
 }
