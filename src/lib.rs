@@ -1065,6 +1065,86 @@ mod tests {
     }
 
     #[test]
+    fn test_list_patients() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/patients")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(r#"["foo", "bar", "baz"]"#)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let patient_ids = cl.list_patients().unwrap();
+
+        assert_eq!(patient_ids, ["foo", "bar", "baz"]);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_studies() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/studies")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(r#"["foo", "bar", "baz"]"#)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let patient_ids = cl.list_studies().unwrap();
+
+        assert_eq!(patient_ids, ["foo", "bar", "baz"]);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_series() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/series")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(r#"["foo", "bar", "baz"]"#)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let patient_ids = cl.list_series().unwrap();
+
+        assert_eq!(patient_ids, ["foo", "bar", "baz"]);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_instances() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(r#"["foo", "bar", "baz"]"#)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let patient_ids = cl.list_instances().unwrap();
+
+        assert_eq!(patient_ids, ["foo", "bar", "baz"]);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
     fn test_list_modalities_expanded() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
@@ -1147,26 +1227,6 @@ mod tests {
                 }
             },
         );
-        assert_eq!(m.times_called(), 1);
-    }
-
-    #[test]
-    fn test_list_patients() {
-        let mock_server = MockServer::start();
-        let url = mock_server.url("");
-
-        let m = Mock::new()
-            .expect_method(Method::GET)
-            .expect_path("/patients")
-            .return_status(200)
-            .return_header("Content-Type", "application/json")
-            .return_body(r#"["foo", "bar", "baz"]"#)
-            .create_on(&mock_server);
-
-        let cl = OrthancClient::new(&url, None, None);
-        let patient_ids = cl.list_patients().unwrap();
-
-        assert_eq!(patient_ids, ["foo", "bar", "baz"]);
         assert_eq!(m.times_called(), 1);
     }
 
