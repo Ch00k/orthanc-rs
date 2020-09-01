@@ -853,7 +853,7 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
-        let resp = cl.get("foo");
+        let resp = cl.get_bytes("foo");
 
         assert_eq!(
             resp.unwrap_err(),
