@@ -537,7 +537,7 @@ impl<'a> OrthancClient<'a> {
         &self,
         id: &str,
     ) -> Result<RemainingAncestorResponse, OrthancError> {
-        let resp = self.delete(&format!("instance/{}", id))?;
+        let resp = self.delete(&format!("instances/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
@@ -1469,6 +1469,82 @@ mod tests {
                     id: "bar".to_string(),
                     path: "/patients/bar".to_string(),
                     entity_type: "Patient".to_string(),
+                })
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_delete_series() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::DELETE)
+            .expect_path("/series/foo")
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "RemainingAncestor": {
+                            "ID": "bar",
+                            "Path": "/studies/bar",
+                            "Type": "Study"
+                        }
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.delete_series("foo").unwrap();
+
+        assert_eq!(
+            resp,
+            RemainingAncestorResponse {
+                remaining_ancestor: Some(RemainingAncestor {
+                    id: "bar".to_string(),
+                    path: "/studies/bar".to_string(),
+                    entity_type: "Study".to_string(),
+                })
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_delete_instance() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::DELETE)
+            .expect_path("/instances/foo")
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "RemainingAncestor": {
+                            "ID": "bar",
+                            "Path": "/series/bar",
+                            "Type": "Series"
+                        }
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.delete_instance("foo").unwrap();
+
+        assert_eq!(
+            resp,
+            RemainingAncestorResponse {
+                remaining_ancestor: Some(RemainingAncestor {
+                    id: "bar".to_string(),
+                    path: "/series/bar".to_string(),
+                    entity_type: "Series".to_string(),
                 })
             }
         );
