@@ -780,7 +780,7 @@ mod tests {
     }
 
     #[test]
-    fn test_error_response() {
+    fn test_get_error_response() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
 
@@ -806,6 +806,198 @@ mod tests {
 
         let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get("foo");
+
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "400".to_string(),
+                error_response: Some(ErrorResponse {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
+                        .to_string(),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_bytes_error_response() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .return_status(400)
+            .return_body(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.get("foo");
+
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "400".to_string(),
+                error_response: Some(ErrorResponse {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
+                        .to_string(),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_post_error_response() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .return_status(400)
+            .return_body(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.post("foo", serde_json::json!("bar"));
+
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "400".to_string(),
+                error_response: Some(ErrorResponse {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
+                        .to_string(),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_post_bytes_error_response() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .return_status(400)
+            .return_body(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.post_bytes("foo", &[13, 42, 17]);
+
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "400".to_string(),
+                error_response: Some(ErrorResponse {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
+                        .to_string(),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_delete_error_response() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::DELETE)
+            .expect_path("/foo")
+            .return_status(400)
+            .return_body(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let resp = cl.delete("foo");
 
         assert_eq!(
             resp.unwrap_err(),
