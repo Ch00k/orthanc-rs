@@ -161,9 +161,6 @@ pub struct Instance {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
 
-    #[serde(with = "datetime_format", rename(deserialize = "LastUpdate"))]
-    pub last_update: NaiveDateTime,
-
     #[serde(rename(deserialize = "MainDicomTags"))]
     pub main_dicom_tags: HashMap<String, String>,
 
@@ -177,7 +174,10 @@ pub struct Instance {
     pub file_uuid: String,
 
     #[serde(rename(deserialize = "FileSize"))]
-    pub file_size: u32,
+    pub file_size: u64,
+
+    #[serde(rename(deserialize = "ModifiedFrom"))]
+    pub modified_from: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -1312,6 +1312,355 @@ mod tests {
                     },
                     studies: ["63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string()]
                         .to_vec(),
+                },
+            ]
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_studies_expanded() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/studies")
+            .expect_query_param_exists("expand")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    [
+                        {
+                            "ID": "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5",
+                            "IsStable": true,
+                            "LastUpdate": "20200830T191109",
+                            "MainDicomTags": {
+                                "AccessionNumber": "foobar",
+                                "StudyDate": "20110101",
+                                "StudyDescription": "Brain",
+                                "StudyID": "1742",
+                                "StudyInstanceUID": "1.2.3.4.5.6789",
+                                "StudyTime": "084707"
+                            },
+                            "ParentPatient": "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe",
+                            "PatientMainDicomTags": {
+                                "PatientBirthDate": "19440101",
+                                "PatientID": "c137",
+                                "PatientName": "Rick Sanchez",
+                                "PatientSex": "M"
+                            },
+                            "Series": [
+                                "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c",
+                                "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2"
+                            ],
+                            "Type": "Study"
+                        },
+                        {
+                            "ID": "e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04",
+                            "IsStable": true,
+                            "LastUpdate": "20200901T185211",
+                            "MainDicomTags": {
+                                "AccessionNumber": "bazqux",
+                                "StudyDate": "20120101",
+                                "StudyDescription": "Knee",
+                                "StudyID": "1010100",
+                                "StudyInstanceUID": "1.2.3.4.5.67810",
+                                "StudyTime": "130431"
+                            },
+                            "ParentPatient": "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493",
+                            "PatientMainDicomTags": {
+                                "PatientBirthDate": "19670101",
+                                "PatientID": "4217",
+                                "PatientName": "Summer Smith",
+                                "PatientSex": "F"
+                            },
+                            "Series": [
+                                "222bbd7e-4dfbc5a8-ea58f933-f1747134-0810c7c8",
+                                "54f8778a-75ba559c-db7c7c1a-c1056140-ef74d487"
+                            ],
+                            "Type": "Study"
+                        }
+                    ]
+               "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let studies = cl.list_studies_expanded().unwrap();
+
+        assert_eq!(
+            studies,
+            [
+                Study {
+                    id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+                    is_stable: true,
+                    last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+                    main_dicom_tags: hashmap! {
+                        "AccessionNumber".to_string() => "foobar".to_string(),
+                        "StudyDate".to_string() => "20110101".to_string(),
+                        "StudyDescription".to_string() => "Brain".to_string(),
+                        "StudyID".to_string() => "1742".to_string(),
+                        "StudyInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                        "StudyTime".to_string() => "084707".to_string()
+                    },
+                    patient_id: "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe".to_string(),
+                    patient_main_dicom_tags: hashmap! {
+                        "PatientBirthDate".to_string() => "19440101".to_string(),
+                        "PatientID".to_string() => "c137".to_string(),
+                        "PatientName".to_string() => "Rick Sanchez".to_string(),
+                        "PatientSex".to_string() => "M".to_string(),
+                    },
+                    series: [
+                        "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+                        "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string()
+                    ]
+                    .to_vec()
+                },
+                Study {
+                    id: "e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string(),
+                    is_stable: true,
+                    last_update: NaiveDate::from_ymd(2020, 9, 1).and_hms(18, 52, 11),
+                    main_dicom_tags: hashmap! {
+                        "AccessionNumber".to_string() => "bazqux".to_string(),
+                        "StudyDate".to_string() => "20120101".to_string(),
+                        "StudyDescription".to_string() => "Knee".to_string(),
+                        "StudyID".to_string() => "1010100".to_string(),
+                        "StudyInstanceUID".to_string() => "1.2.3.4.5.67810".to_string(),
+                        "StudyTime".to_string() => "130431".to_string()
+                    },
+                    patient_id: "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493".to_string(),
+                    patient_main_dicom_tags: hashmap! {
+                        "PatientBirthDate".to_string() => "19670101".to_string(),
+                        "PatientID".to_string() => "4217".to_string(),
+                        "PatientName".to_string() => "Summer Smith".to_string(),
+                        "PatientSex".to_string() => "F".to_string(),
+                    },
+                    series: [
+                        "222bbd7e-4dfbc5a8-ea58f933-f1747134-0810c7c8".to_string(),
+                        "54f8778a-75ba559c-db7c7c1a-c1056140-ef74d487".to_string()
+                    ]
+                    .to_vec()
+                },
+            ]
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_seies_expanded() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/series")
+            .expect_query_param_exists("expand")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    [
+                        {
+                            "ExpectedNumberOfInstances": 17,
+                            "ID": "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c",
+                            "Instances": [
+                                "556530b5-de7c487b-110b9d0e-12cfdbb9-f06b546e",
+                                "c46605db-836489fa-cb55fbbc-13c8a913-b0bad6ac",
+                                "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788"
+                            ],
+                            "IsStable": true,
+                            "LastUpdate": "20200830T191109",
+                            "MainDicomTags": {
+                                "BodyPartExamined": "ABDOMEN",
+                                "Modality": "MR",
+                                "ProtocolName": "TCP",
+                                "SeriesDate": "20110101",
+                                "SeriesInstanceUID": "1.2.3.4.5.6789",
+                                "SeriesNumber": "1101",
+                                "SeriesTime": "091313.93"
+                            },
+                            "ParentStudy": "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5",
+                            "Status": "Unknown",
+                            "Type": "Series"
+                        },
+                        {
+                            "ExpectedNumberOfInstances": null,
+                            "ID": "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2",
+                            "Instances": [
+                                "a17e85ca-380bb2dc-d29ea4b7-6e73c10a-ca6ba458",
+                                "1c81e7e8-30642777-ffc2ca41-c7536670-7ad68124"
+                            ],
+                            "IsStable": true,
+                            "LastUpdate": "20200830T191109",
+                            "MainDicomTags": {
+                                "BodyPartExamined": "HEAD",
+                                "Modality": "CT",
+                                "ProtocolName": "UDP",
+                                "SeriesDate": "20110101",
+                                "SeriesInstanceUID": "1.2.3.4.5.67810",
+                                "SeriesNumber": "1102",
+                                "SeriesTime": "091313.93"
+                            },
+                            "ParentStudy": "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5",
+                            "Status": "Unknown",
+                            "Type": "Series"
+                        }
+                    ]
+               "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let series = cl.list_series_expanded().unwrap();
+
+        assert_eq!(
+            series,
+            [
+                Series {
+                    id: "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+                    status: "Unknown".to_string(),
+                    is_stable: true,
+                    last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+                    main_dicom_tags: hashmap! {
+                        "BodyPartExamined".to_string() => "ABDOMEN".to_string(),
+                        "Modality".to_string() => "MR".to_string(),
+                        "ProtocolName".to_string() => "TCP".to_string(),
+                        "SeriesDate".to_string() => "20110101".to_string(),
+                        "SeriesInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                        "SeriesNumber".to_string() => "1101".to_string(),
+                        "SeriesTime".to_string() => "091313.93".to_string(),
+
+                    },
+                    study_id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+                    num_instances: Some(17),
+                    instances: [
+                        "556530b5-de7c487b-110b9d0e-12cfdbb9-f06b546e".to_string(),
+                        "c46605db-836489fa-cb55fbbc-13c8a913-b0bad6ac".to_string(),
+                        "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788".to_string(),
+                    ]
+                    .to_vec()
+                },
+                Series {
+                    id: "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string(),
+                    status: "Unknown".to_string(),
+                    is_stable: true,
+                    last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+                    main_dicom_tags: hashmap! {
+                        "BodyPartExamined".to_string() => "HEAD".to_string(),
+                        "Modality".to_string() => "CT".to_string(),
+                        "ProtocolName".to_string() => "UDP".to_string(),
+                        "SeriesDate".to_string() => "20110101".to_string(),
+                        "SeriesInstanceUID".to_string() => "1.2.3.4.5.67810".to_string(),
+                        "SeriesNumber".to_string() => "1102".to_string(),
+                        "SeriesTime".to_string() => "091313.93".to_string(),
+
+                    },
+                    study_id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+                    num_instances: None,
+                    instances: [
+                        "a17e85ca-380bb2dc-d29ea4b7-6e73c10a-ca6ba458".to_string(),
+                        "1c81e7e8-30642777-ffc2ca41-c7536670-7ad68124".to_string(),
+                    ]
+                    .to_vec()
+                },
+            ]
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_list_instances_expanded() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances")
+            .expect_query_param_exists("expand")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    [
+                        {
+                            "FileSize": 139402,
+                            "FileUuid": "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e",
+                            "ID": "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c",
+                            "IndexInSeries": 13,
+                            "MainDicomTags": {
+                                "ImageOrientationPatient": "1\\0\\0\\0\\1\\0",
+                                "ImagePositionPatient": "-17\\42\\13",
+                                "InstanceCreationDate": "20130326",
+                                "InstanceCreationTime": "135901",
+                                "InstanceNumber": "13",
+                                "SOPInstanceUID": "1.2.3.4.5.6789"
+                            },
+                            "ModifiedFrom": "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a",
+                            "ParentSeries": "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03",
+                            "Type": "Instance"
+                        },
+                        {
+                            "FileSize": 381642,
+                            "FileUuid": "86bbad65-2c98-4cb0-bf77-0ef0243410a4",
+                            "ID": "286a251e-46571bd6-0e14ab9a-1baadddc-d0146ea0",
+                            "IndexInSeries": 75,
+                            "MainDicomTags": {
+                                "ImageOrientationPatient": "-1\\0\\0\\0\\1\\0",
+                                "ImagePositionPatient": "-17\\42\\14",
+                                "InstanceCreationDate": "20130326",
+                                "InstanceCreationTime": "135830",
+                                "InstanceNumber": "75",
+                                "SOPInstanceUID": "1.2.3.4.5.67810"
+                            },
+                            "ParentSeries": "a240e0d7-538699a0-7464bb4b-a906f72a-fa3a32c7",
+                            "Type": "Instance"
+                        }
+                    ]
+               "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let instances = cl.list_instances_expanded().unwrap();
+
+        assert_eq!(
+            instances,
+            [
+                Instance {
+                    id: "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c".to_string(),
+                    main_dicom_tags: hashmap! {
+                        "ImageOrientationPatient".to_string() => "1\\0\\0\\0\\1\\0".to_string(),
+                        "ImagePositionPatient".to_string() => "-17\\42\\13".to_string(),
+                        "InstanceCreationDate".to_string() => "20130326".to_string(),
+                        "InstanceCreationTime".to_string() => "135901".to_string(),
+                        "InstanceNumber".to_string() => "13".to_string(),
+                        "SOPInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                    },
+                    series_id: "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03".to_string(),
+                    index_in_series: 13,
+                    file_uuid: "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e".to_string(),
+                    file_size: 139402,
+                    modified_from: Some(
+                        "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()
+                    ),
+                },
+                Instance {
+                    id: "286a251e-46571bd6-0e14ab9a-1baadddc-d0146ea0".to_string(),
+                    main_dicom_tags: hashmap! {
+                        "ImageOrientationPatient".to_string() => "-1\\0\\0\\0\\1\\0".to_string(),
+                        "ImagePositionPatient".to_string() => "-17\\42\\14".to_string(),
+                        "InstanceCreationDate".to_string() => "20130326".to_string(),
+                        "InstanceCreationTime".to_string() => "135830".to_string(),
+                        "InstanceNumber".to_string() => "75".to_string(),
+                        "SOPInstanceUID".to_string() => "1.2.3.4.5.67810".to_string(),
+                    },
+                    series_id: "a240e0d7-538699a0-7464bb4b-a906f72a-fa3a32c7".to_string(),
+                    index_in_series: 75,
+                    file_uuid: "86bbad65-2c98-4cb0-bf77-0ef0243410a4".to_string(),
+                    file_size: 381642,
+                    modified_from: None
                 },
             ]
         );
