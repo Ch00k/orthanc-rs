@@ -501,6 +501,11 @@ impl<'a> OrthancClient<'a> {
         self.get_bytes(&path)
     }
 
+    pub fn get_series_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
+        let path = format!("series/{}/archive", id);
+        self.get_bytes(&path)
+    }
+
     pub fn get_instance_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
         let path = format!("instances/{}/file", id);
         self.get_bytes(&path)
@@ -2013,6 +2018,86 @@ mod tests {
 
         let expected_resp: Value = serde_json::from_str(body).unwrap();
         assert_eq!(resp, expected_resp);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_patient_dicom() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/patients/foo/archive")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body("foobar")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.get_patient_dicom("foo").unwrap();
+
+        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_study_dicom() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/studies/foo/archive")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body("foobar")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.get_study_dicom("foo").unwrap();
+
+        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_series_dicom() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/series/foo/archive")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body("foobar")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.get_series_dicom("foo").unwrap();
+
+        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_instance_dicom() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances/foo/file")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body("foobar")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.get_instance_dicom("foo").unwrap();
+
+        assert_eq!(resp, "foobar".as_bytes());
         assert_eq!(m.times_called(), 1);
     }
 
