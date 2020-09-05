@@ -456,53 +456,53 @@ impl<'a> OrthancClient<'a> {
     }
 
     pub fn get_patient(&self, id: &str) -> Result<Patient, OrthancError> {
-        let resp = self.get(&format!("/patients/{}", id))?;
+        let resp = self.get(&format!("patients/{}", id))?;
         let json: Patient = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_study(&self, id: &str) -> Result<Study, OrthancError> {
-        let resp = self.get(&format!("/studies/{}", id))?;
+        let resp = self.get(&format!("studies/{}", id))?;
         let json: Study = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_series(&self, id: &str) -> Result<Series, OrthancError> {
-        let resp = self.get(&format!("/series/{}", id))?;
+        let resp = self.get(&format!("series/{}", id))?;
         let json: Series = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance(&self, id: &str) -> Result<Instance, OrthancError> {
-        let resp = self.get(&format!("/instances/{}", id))?;
+        let resp = self.get(&format!("instances/{}", id))?;
         let json: Instance = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance_tags(&self, id: &str) -> Result<Value, OrthancError> {
-        let resp = self.get(&format!("/instances/{}/simplified-tags", id))?;
+        let resp = self.get(&format!("instances/{}/simplified-tags", id))?;
         let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_instance_tags_expanded(&self, id: &str) -> Result<Value, OrthancError> {
-        let resp = self.get(&format!("/instances/{}/tags", id))?;
+        let resp = self.get(&format!("instances/{}/tags", id))?;
         let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn get_patient_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
-        let path = format!("/patients/{}/archive", id);
+        let path = format!("patients/{}/archive", id);
         self.get_bytes(&path)
     }
 
     pub fn get_study_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
-        let path = format!("/studies/{}/archive", id);
+        let path = format!("studies/{}/archive", id);
         self.get_bytes(&path)
     }
 
     pub fn get_instance_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
-        let path = format!("/instances/{}/file", id);
+        let path = format!("instances/{}/file", id);
         self.get_bytes(&path)
     }
 
@@ -1664,6 +1664,355 @@ mod tests {
                 },
             ]
         );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_patient() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/patients/foo")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    {
+                        "ID": "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493",
+                        "IsStable": true,
+                        "LastUpdate": "20200101T154617",
+                        "MainDicomTags": {
+                            "OtherPatientIDs": "",
+                            "PatientBirthDate": "19670101",
+                            "PatientID": "123456789",
+                            "PatientName": "Rick Sanchez",
+                            "PatientSex": "M"
+                        },
+                        "Studies": [
+                            "e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04"
+                        ],
+                        "Type": "Patient"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let patient = cl.get_patient("foo").unwrap();
+
+        assert_eq!(
+            patient,
+            Patient {
+                id: "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493".to_string(),
+                is_stable: true,
+                last_update: NaiveDate::from_ymd(2020, 1, 1).and_hms(15, 46, 17),
+                main_dicom_tags: hashmap! {
+                    "OtherPatientIDs".to_string() => "".to_string(),
+                    "PatientBirthDate".to_string() => "19670101".to_string(),
+                    "PatientID".to_string() => "123456789".to_string(),
+                    "PatientName".to_string() => "Rick Sanchez".to_string(),
+                    "PatientSex".to_string() => "M".to_string()
+                },
+                studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()]
+                    .to_vec(),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_study() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/studies/foo")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    {
+                        "ID": "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5",
+                        "IsStable": true,
+                        "LastUpdate": "20200830T191109",
+                        "MainDicomTags": {
+                            "AccessionNumber": "foobar",
+                            "StudyDate": "20110101",
+                            "StudyDescription": "Brain",
+                            "StudyID": "1742",
+                            "StudyInstanceUID": "1.2.3.4.5.6789",
+                            "StudyTime": "084707"
+                        },
+                        "ParentPatient": "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe",
+                        "PatientMainDicomTags": {
+                            "PatientBirthDate": "19440101",
+                            "PatientID": "c137",
+                            "PatientName": "Rick Sanchez",
+                            "PatientSex": "M"
+                        },
+                        "Series": [
+                            "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c",
+                            "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2"
+                        ],
+                        "Type": "Study"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let study = cl.get_study("foo").unwrap();
+
+        assert_eq!(
+            study,
+            Study {
+                id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+                is_stable: true,
+                last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+                main_dicom_tags: hashmap! {
+                    "AccessionNumber".to_string() => "foobar".to_string(),
+                    "StudyDate".to_string() => "20110101".to_string(),
+                    "StudyDescription".to_string() => "Brain".to_string(),
+                    "StudyID".to_string() => "1742".to_string(),
+                    "StudyInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                    "StudyTime".to_string() => "084707".to_string()
+                },
+                patient_id: "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe".to_string(),
+                patient_main_dicom_tags: hashmap! {
+                    "PatientBirthDate".to_string() => "19440101".to_string(),
+                    "PatientID".to_string() => "c137".to_string(),
+                    "PatientName".to_string() => "Rick Sanchez".to_string(),
+                    "PatientSex".to_string() => "M".to_string(),
+                },
+                series: [
+                    "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+                    "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string()
+                ]
+                .to_vec()
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_instance() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances/foo")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    {
+                        "FileSize": 139402,
+                        "FileUuid": "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e",
+                        "ID": "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c",
+                        "IndexInSeries": 13,
+                        "MainDicomTags": {
+                            "ImageOrientationPatient": "1\\0\\0\\0\\1\\0",
+                            "ImagePositionPatient": "-17\\42\\13",
+                            "InstanceCreationDate": "20130326",
+                            "InstanceCreationTime": "135901",
+                            "InstanceNumber": "13",
+                            "SOPInstanceUID": "1.2.3.4.5.6789"
+                        },
+                        "ModifiedFrom": "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a",
+                        "ParentSeries": "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03",
+                        "Type": "Instance"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let instance = cl.get_instance("foo").unwrap();
+
+        assert_eq!(
+            instance,
+            Instance {
+                id: "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c".to_string(),
+                main_dicom_tags: hashmap! {
+                    "ImageOrientationPatient".to_string() => "1\\0\\0\\0\\1\\0".to_string(),
+                    "ImagePositionPatient".to_string() => "-17\\42\\13".to_string(),
+                    "InstanceCreationDate".to_string() => "20130326".to_string(),
+                    "InstanceCreationTime".to_string() => "135901".to_string(),
+                    "InstanceNumber".to_string() => "13".to_string(),
+                    "SOPInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                },
+                series_id: "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03".to_string(),
+                index_in_series: 13,
+                file_uuid: "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e".to_string(),
+                file_size: 139402,
+                modified_from: Some(
+                    "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()
+                ),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_series() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/series/foo")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    {
+                        "ExpectedNumberOfInstances": 17,
+                        "ID": "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c",
+                        "Instances": [
+                            "556530b5-de7c487b-110b9d0e-12cfdbb9-f06b546e",
+                            "c46605db-836489fa-cb55fbbc-13c8a913-b0bad6ac",
+                            "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788"
+                        ],
+                        "IsStable": true,
+                        "LastUpdate": "20200830T191109",
+                        "MainDicomTags": {
+                            "BodyPartExamined": "ABDOMEN",
+                            "Modality": "MR",
+                            "ProtocolName": "TCP",
+                            "SeriesDate": "20110101",
+                            "SeriesInstanceUID": "1.2.3.4.5.6789",
+                            "SeriesNumber": "1101",
+                            "SeriesTime": "091313.93"
+                        },
+                        "ParentStudy": "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5",
+                        "Status": "Unknown",
+                        "Type": "Series"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let series = cl.get_series("foo").unwrap();
+
+        assert_eq!(
+            series,
+            Series {
+                id: "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+                status: "Unknown".to_string(),
+                is_stable: true,
+                last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+                main_dicom_tags: hashmap! {
+                    "BodyPartExamined".to_string() => "ABDOMEN".to_string(),
+                    "Modality".to_string() => "MR".to_string(),
+                    "ProtocolName".to_string() => "TCP".to_string(),
+                    "SeriesDate".to_string() => "20110101".to_string(),
+                    "SeriesInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                    "SeriesNumber".to_string() => "1101".to_string(),
+                    "SeriesTime".to_string() => "091313.93".to_string(),
+
+                },
+                study_id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+                num_instances: Some(17),
+                instances: [
+                    "556530b5-de7c487b-110b9d0e-12cfdbb9-f06b546e".to_string(),
+                    "c46605db-836489fa-cb55fbbc-13c8a913-b0bad6ac".to_string(),
+                    "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788".to_string(),
+                ]
+                .to_vec()
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_instance_tags() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let body = r#"
+            {
+                "AccessionNumber": "foobar",
+                "AcquisitionDate": "20110101",
+                "AcquisitionDuration": "219",
+                "ReferencedImageSequence": [
+                    {
+                        "ReferencedSOPClassUID": "1.2.3.4.5.6789",
+                        "ReferencedSOPInstanceUID": "1.2.3.4.5.67810"
+                    }
+                ]
+            }
+        "#;
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances/foo/simplified-tags")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(body)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.get_instance_tags("foo").unwrap();
+
+        let expected_resp: Value = serde_json::from_str(body).unwrap();
+        assert_eq!(resp, expected_resp);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_instance_tags_expanded() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let body = r#"
+            {
+                "0002,0003": {
+                    "Name": "MediaStorageSOPInstanceUID",
+                    "Type": "String",
+                    "Value": "1.2.3.4567"
+                },
+                "0008,0005": {
+                    "Name": "SpecificCharacterSet",
+                    "Type": "String",
+                    "Value": "ISO_IR 100"
+                },
+                "0008,1110": {
+                    "Name": "ReferencedStudySequence",
+                    "Type": "Sequence",
+                    "Value": [
+                        {
+                            "0008,1150": {
+                                "Name": "ReferencedSOPClassUID",
+                                "Type": "String",
+                                "Value": "1.2.3.4.5.6789"
+                            },
+                            "0008,1155": {
+                                "Name": "ReferencedSOPInstanceUID",
+                                "Type": "String",
+                                "Value": "1.2.3.4.5.67810"
+                            }
+                        }
+                    ]
+                }
+            }
+        "#;
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances/foo/tags")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(body)
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.get_instance_tags_expanded("foo").unwrap();
+
+        let expected_resp: Value = serde_json::from_str(body).unwrap();
+        assert_eq!(resp, expected_resp);
         assert_eq!(m.times_called(), 1);
     }
 
