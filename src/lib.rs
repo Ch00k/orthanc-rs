@@ -6,7 +6,10 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
+use std::result;
 use std::str;
+
+type Result<T> = result::Result<T, OrthancError>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OrthancError {
@@ -325,7 +328,7 @@ impl<'a> OrthancClient<'a> {
         }
     }
 
-    fn get(&self, path: &str) -> Result<String, OrthancError> {
+    fn get(&self, path: &str) -> Result<String> {
         let url = format!("{}/{}", self.server_address, &path);
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
@@ -339,7 +342,7 @@ impl<'a> OrthancClient<'a> {
         Ok(body)
     }
 
-    fn get_bytes(&self, path: &str) -> Result<Bytes, OrthancError> {
+    fn get_bytes(&self, path: &str) -> Result<Bytes> {
         let url = format!("{}/{}", self.server_address, &path);
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
@@ -354,7 +357,7 @@ impl<'a> OrthancClient<'a> {
         Ok(body)
     }
 
-    fn post(&self, path: &str, data: Value) -> Result<String, OrthancError> {
+    fn post(&self, path: &str, data: Value) -> Result<String> {
         let url = format!("{}/{}", self.server_address, path);
         let mut request = self.client.post(&url).json(&data);
         request = self.add_auth(request);
@@ -368,7 +371,7 @@ impl<'a> OrthancClient<'a> {
         Ok(body)
     }
 
-    fn post_bytes(&self, path: &str, data: &[u8]) -> Result<String, OrthancError> {
+    fn post_bytes(&self, path: &str, data: &[u8]) -> Result<String> {
         let url = format!("{}/{}", self.server_address, path);
         // TODO: .to_vec() here is probably not a good idea
         let mut request = self.client.post(&url).body(data.to_vec());
@@ -383,7 +386,7 @@ impl<'a> OrthancClient<'a> {
         Ok(body)
     }
 
-    fn delete(&self, path: &str) -> Result<String, OrthancError> {
+    fn delete(&self, path: &str) -> Result<String> {
         let url = format!("{}/{}", self.server_address, &path);
         let mut request = self.client.delete(&url);
         request = self.add_auth(request);
@@ -397,157 +400,143 @@ impl<'a> OrthancClient<'a> {
         Ok(body)
     }
 
-    fn list(&self, entity: &str) -> Result<Vec<String>, OrthancError> {
+    fn list(&self, entity: &str) -> Result<Vec<String>> {
         let resp = self.get(entity)?;
         let json: Vec<String> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_modalities(&self) -> Result<Vec<String>, OrthancError> {
+    pub fn list_modalities(&self) -> Result<Vec<String>> {
         self.list("modalities")
     }
 
-    pub fn list_patients(&self) -> Result<Vec<String>, OrthancError> {
+    pub fn list_patients(&self) -> Result<Vec<String>> {
         self.list("patients")
     }
 
-    pub fn list_studies(&self) -> Result<Vec<String>, OrthancError> {
+    pub fn list_studies(&self) -> Result<Vec<String>> {
         self.list("studies")
     }
 
-    pub fn list_series(&self) -> Result<Vec<String>, OrthancError> {
+    pub fn list_series(&self) -> Result<Vec<String>> {
         self.list("series")
     }
 
-    pub fn list_instances(&self) -> Result<Vec<String>, OrthancError> {
+    pub fn list_instances(&self) -> Result<Vec<String>> {
         self.list("instances")
     }
 
-    pub fn list_modalities_expanded(
-        &self,
-    ) -> Result<HashMap<String, Modality>, OrthancError> {
+    pub fn list_modalities_expanded(&self) -> Result<HashMap<String, Modality>> {
         let resp = self.get("modalities?expand")?;
         let json: HashMap<String, Modality> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_patients_expanded(&self) -> Result<Vec<Patient>, OrthancError> {
+    pub fn list_patients_expanded(&self) -> Result<Vec<Patient>> {
         let resp = self.get("patients?expand")?;
         let json: Vec<Patient> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_studies_expanded(&self) -> Result<Vec<Study>, OrthancError> {
+    pub fn list_studies_expanded(&self) -> Result<Vec<Study>> {
         let resp = self.get("studies?expand")?;
         let json: Vec<Study> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_series_expanded(&self) -> Result<Vec<Series>, OrthancError> {
+    pub fn list_series_expanded(&self) -> Result<Vec<Series>> {
         let resp = self.get("series?expand")?;
         let json: Vec<Series> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_instances_expanded(&self) -> Result<Vec<Instance>, OrthancError> {
+    pub fn list_instances_expanded(&self) -> Result<Vec<Instance>> {
         let resp = self.get("instances?expand")?;
         let json: Vec<Instance> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_patient(&self, id: &str) -> Result<Patient, OrthancError> {
+    pub fn get_patient(&self, id: &str) -> Result<Patient> {
         let resp = self.get(&format!("patients/{}", id))?;
         let json: Patient = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_study(&self, id: &str) -> Result<Study, OrthancError> {
+    pub fn get_study(&self, id: &str) -> Result<Study> {
         let resp = self.get(&format!("studies/{}", id))?;
         let json: Study = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_series(&self, id: &str) -> Result<Series, OrthancError> {
+    pub fn get_series(&self, id: &str) -> Result<Series> {
         let resp = self.get(&format!("series/{}", id))?;
         let json: Series = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_instance(&self, id: &str) -> Result<Instance, OrthancError> {
+    pub fn get_instance(&self, id: &str) -> Result<Instance> {
         let resp = self.get(&format!("instances/{}", id))?;
         let json: Instance = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_instance_tags(&self, id: &str) -> Result<Value, OrthancError> {
+    pub fn get_instance_tags(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/simplified-tags", id))?;
         let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_instance_tags_expanded(&self, id: &str) -> Result<Value, OrthancError> {
+    pub fn get_instance_tags_expanded(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/tags", id))?;
         let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_patient_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
+    pub fn get_patient_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("patients/{}/archive", id);
         self.get_bytes(&path)
     }
 
-    pub fn get_study_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
+    pub fn get_study_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("studies/{}/archive", id);
         self.get_bytes(&path)
     }
 
-    pub fn get_series_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
+    pub fn get_series_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("series/{}/archive", id);
         self.get_bytes(&path)
     }
 
-    pub fn get_instance_dicom(&self, id: &str) -> Result<Bytes, OrthancError> {
+    pub fn get_instance_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("instances/{}/file", id);
         self.get_bytes(&path)
     }
 
-    pub fn delete_patient(
-        &self,
-        id: &str,
-    ) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestorResponse> {
         let resp = self.delete(&format!("patients/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_study(
-        &self,
-        id: &str,
-    ) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_study(&self, id: &str) -> Result<RemainingAncestorResponse> {
         let resp = self.delete(&format!("studies/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_series(
-        &self,
-        id: &str,
-    ) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_series(&self, id: &str) -> Result<RemainingAncestorResponse> {
         let resp = self.delete(&format!("series/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_instance(
-        &self,
-        id: &str,
-    ) -> Result<RemainingAncestorResponse, OrthancError> {
+    pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestorResponse> {
         let resp = self.delete(&format!("instances/{}", id))?;
         let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<(), OrthancError> {
+    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
         let mut data = HashMap::new();
         // TODO: This does not seem idiomatic
         if timeout != None {
@@ -560,11 +549,7 @@ impl<'a> OrthancClient<'a> {
         .map(|_| ())
     }
 
-    pub fn store(
-        &self,
-        modality: &str,
-        ids: &[&str],
-    ) -> Result<StoreResponse, OrthancError> {
+    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResponse> {
         let resp = self.post(
             &format!("modalities/{}/store", modality),
             serde_json::json!(ids),
@@ -580,7 +565,7 @@ impl<'a> OrthancClient<'a> {
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
         force: Option<bool>,
-    ) -> Result<ModifyResponse, OrthancError> {
+    ) -> Result<ModifyResponse> {
         let data = Modifications {
             remove,
             replace,
@@ -599,7 +584,7 @@ impl<'a> OrthancClient<'a> {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
-    ) -> Result<ModifyResponse, OrthancError> {
+    ) -> Result<ModifyResponse> {
         self.modify("patients", id, replace, remove, Some(true))
     }
 
@@ -608,7 +593,7 @@ impl<'a> OrthancClient<'a> {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
-    ) -> Result<ModifyResponse, OrthancError> {
+    ) -> Result<ModifyResponse> {
         self.modify("studies", id, replace, remove, None)
     }
 
@@ -617,11 +602,11 @@ impl<'a> OrthancClient<'a> {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<HashMap<String, String>>,
-    ) -> Result<ModifyResponse, OrthancError> {
+    ) -> Result<ModifyResponse> {
         self.modify("series", id, replace, remove, None)
     }
 
-    pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse, OrthancError> {
+    pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse> {
         let resp = self.post_bytes("instances", data)?;
         let json: UploadStatusResponse = serde_json::from_str(&resp)?;
         Ok(json)
@@ -631,7 +616,7 @@ impl<'a> OrthancClient<'a> {
 fn check_http_error(
     response_status: reqwest::StatusCode,
     response_body: &str,
-) -> Result<(), OrthancError> {
+) -> Result<()> {
     if response_status >= reqwest::StatusCode::BAD_REQUEST {
         if response_body.is_empty() {
             return Err(OrthancError::new(response_status.as_str(), None));
