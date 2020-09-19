@@ -286,7 +286,26 @@ pub struct ModifyResponse {
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq)]
-struct Modifications {
+struct Anonymization {
+    #[serde(rename = "Replace")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    replace: Option<HashMap<String, String>>,
+
+    #[serde(rename = "Keep")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    keep: Option<Vec<String>>,
+
+    #[serde(rename = "KeepPrivateTags")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    keep_private_tags: Option<bool>,
+
+    #[serde(rename = "DicomVersion")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dicom_version: Option<String>,
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq)]
+struct Modification {
     #[serde(rename = "Remove")]
     #[serde(skip_serializing_if = "Option::is_none")]
     remove: Option<HashMap<String, String>>,
@@ -558,6 +577,29 @@ impl<'a> OrthancClient<'a> {
         Ok(json)
     }
 
+    fn anonymize(
+        &self,
+        entity: &str,
+        id: &str,
+        replace: Option<HashMap<String, String>>,
+        keep: Option<Vec<String>>,
+        keep_private_tags: Option<bool>,
+        dicom_version: Option<String>,
+    ) -> Result<ModifyResponse> {
+        let data = Anonymization {
+            replace,
+            keep,
+            keep_private_tags,
+            dicom_version,
+        };
+        let resp = self.post(
+            &format!("{}/{}/anonymize", entity, id),
+            serde_json::to_value(data)?,
+        )?;
+        let json: ModifyResponse = serde_json::from_str(&resp)?;
+        Ok(json)
+    }
+
     fn modify(
         &self,
         entity: &str,
@@ -566,7 +608,7 @@ impl<'a> OrthancClient<'a> {
         remove: Option<HashMap<String, String>>,
         force: Option<bool>,
     ) -> Result<ModifyResponse> {
-        let data = Modifications {
+        let data = Modification {
             remove,
             replace,
             force,
@@ -577,6 +619,60 @@ impl<'a> OrthancClient<'a> {
         )?;
         let json: ModifyResponse = serde_json::from_str(&resp)?;
         Ok(json)
+    }
+
+    pub fn anonymize_patient(
+        &self,
+        id: &str,
+        replace: Option<HashMap<String, String>>,
+        keep: Option<Vec<String>>,
+        keep_private_tags: Option<bool>,
+        dicom_version: Option<String>,
+    ) -> Result<ModifyResponse> {
+        self.anonymize(
+            "patients",
+            id,
+            replace,
+            keep,
+            keep_private_tags,
+            dicom_version,
+        )
+    }
+
+    pub fn anonymize_study(
+        &self,
+        id: &str,
+        replace: Option<HashMap<String, String>>,
+        keep: Option<Vec<String>>,
+        keep_private_tags: Option<bool>,
+        dicom_version: Option<String>,
+    ) -> Result<ModifyResponse> {
+        self.anonymize(
+            "studies",
+            id,
+            replace,
+            keep,
+            keep_private_tags,
+            dicom_version,
+        )
+    }
+
+    pub fn anonymize_series(
+        &self,
+        id: &str,
+        replace: Option<HashMap<String, String>>,
+        keep: Option<Vec<String>>,
+        keep_private_tags: Option<bool>,
+        dicom_version: Option<String>,
+    ) -> Result<ModifyResponse> {
+        self.anonymize(
+            "series",
+            id,
+            replace,
+            keep,
+            keep_private_tags,
+            dicom_version,
+        )
     }
 
     pub fn modify_patient(
@@ -2140,7 +2236,7 @@ mod tests {
         let m = Mock::new()
             .expect_method(Method::POST)
             .expect_path("/studies/foo/modify")
-            .expect_json_body(&Modifications {
+            .expect_json_body(&Modification {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
                 remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
                 force: None,
