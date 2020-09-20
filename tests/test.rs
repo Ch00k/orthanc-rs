@@ -3,8 +3,14 @@ use serde_json;
 use std::env;
 use std::process::Command;
 
-fn run_curl(url: &str) -> Vec<u8> {
-    Command::new("curl").arg(url).output().unwrap().stdout
+fn run_curl(url: &str, username: &str, password: &str) -> Vec<u8> {
+    Command::new("curl")
+        .arg("--user")
+        .arg(format!("{}:{}", username, password))
+        .arg(url)
+        .output()
+        .unwrap()
+        .stdout
 }
 
 fn server_address() -> String {
@@ -25,7 +31,8 @@ fn test_list_patients() {
     let username = &username();
     let password = &password();
 
-    let expected_patients_json = run_curl(&format!("{}/patients", address));
+    let expected_patients_json =
+        run_curl(&format!("{}/patients", address), username, password);
     let expected_patients: Vec<String> =
         serde_json::from_slice(&expected_patients_json).unwrap();
 
@@ -41,7 +48,8 @@ fn test_list_patients_expanded() {
     let username = &username();
     let password = &password();
 
-    let expected_patients_json = run_curl(&format!("{}/patients?expand", address));
+    let expected_patients_json =
+        run_curl(&format!("{}/patients?expand", address), username, password);
     let expected_patients: Vec<Patient> =
         serde_json::from_slice(&expected_patients_json).unwrap();
 
