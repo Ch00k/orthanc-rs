@@ -31,7 +31,7 @@ jobs:
 
   integration_test:
     runs-on: ubuntu-latest
-    name: unit_test
+    name: integration_test
     container:
       image: jodogne/orthanc:latest
       ports:
@@ -50,4 +50,4 @@ jobs:
           toolchain: stable
 
       - name: run tests
-        run: integration_test.sh
+        run: ./integration_test.sh
