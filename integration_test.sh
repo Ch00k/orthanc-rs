@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+set -e
+
 # ftp://medical.nema.org/medical/dicom/DataSets/WG16/Philips/
-curl -i https://minuteware.net/orc/test_data.tar.bz2 > /tmp/test_data.tar.bz2
-tar xvjf /tmp/test_data.tar.bz2
+curl https://minuteware.net/orc/test_data.tar.bz2 > /tmp/test_data.tar.bz2
+tar xvjf /tmp/test_data.tar.bz2 -C /tmp
 
 curl_command="curl -i -X POST -H 'Expect:'"
 
@@ -15,4 +17,4 @@ for f in $(find /tmp/test_data -type f); do
     $cmd
 done
 
-cargo test --test integration -- --show-output
+cargo test --test integration

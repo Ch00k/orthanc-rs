@@ -22,7 +22,7 @@ jobs:
       - name: run tests
         run: |
           cargo install cargo-tarpaulin && \
-          cargo tarpaulin --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
+          cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
       - name: upload coverage
         uses: codecov/codecov-action@v1
