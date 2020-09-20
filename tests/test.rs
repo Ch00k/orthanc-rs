@@ -2,6 +2,9 @@ use orthanc_client::*;
 use serde_json;
 use serde_json::{from_slice, json, Value};
 use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
 use std::process::Command;
 
 fn address() -> String {
@@ -14,6 +17,10 @@ fn username() -> String {
 
 fn password() -> String {
     env::var("ORC_ORTHANC_PASSWORD").unwrap()
+}
+
+fn datafiles_path() -> String {
+    env::var("ORC_DATAFILES_PATH").unwrap()
 }
 
 fn client() -> OrthancClient {
@@ -164,4 +171,17 @@ fn test_get_instance() {
         json!(client().get_instance(&instance).unwrap()),
         expected_response(&format!("instances/{}", instance))
     );
+}
+
+#[test]
+fn test_upload_dicom() {
+    let mut f = File::open(Path::new(&datafiles_path()).join("upload")).unwrap();
+    let mut data = Vec::new();
+    f.read_to_end(&mut data).unwrap();
+
+    let resp = client().upload_dicom(&data).unwrap();
+    assert_eq!(resp.status, "Success");
+
+    let resp = client().upload_dicom(&data).unwrap();
+    assert_eq!(resp.status, "AlreadyStored");
 }
