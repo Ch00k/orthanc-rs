@@ -7,9 +7,9 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  unit_test:
     runs-on: ubuntu-latest
-    name: test
+    name: unit_test
     steps:
       - name: checkout
         uses: actions/checkout@v2
@@ -28,3 +28,26 @@ jobs:
         uses: codecov/codecov-action@v1
         with:
           fail_ci_if_error: true
+
+  integration_test:
+    runs-on: ubuntu-latest
+    name: unit_test
+    container:
+      image: jodogne/orthanc:latest
+      ports:
+        - 8042
+
+    env:
+      ORC_ORTHANC_ADDRESS: http://localhost:8042
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: prepare rust env
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: run tests
+        run: integration_test.sh

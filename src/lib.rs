@@ -1,8 +1,7 @@
 use bytes::Bytes;
 use chrono::NaiveDateTime;
 use reqwest::blocking::{Client, RequestBuilder};
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
@@ -51,7 +50,7 @@ impl From<str::Utf8Error> for OrthancError {
     }
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Modality {
     #[serde(rename(deserialize = "AET"))]
     pub aet: String,
@@ -90,7 +89,7 @@ pub struct Modality {
     pub allow_transcoding: bool,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Patient {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -108,7 +107,7 @@ pub struct Patient {
     pub studies: Vec<String>,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Study {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -132,7 +131,7 @@ pub struct Study {
     pub series: Vec<String>,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Series {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -159,7 +158,7 @@ pub struct Series {
     pub instances: Vec<String>,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Instance {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -183,7 +182,7 @@ pub struct Instance {
     pub modified_from: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct UploadStatusResponse {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -204,7 +203,7 @@ pub struct UploadStatusResponse {
     parent_series: String,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct RemainingAncestor {
     #[serde(rename(deserialize = "ID"))]
     pub id: String,
@@ -216,13 +215,13 @@ pub struct RemainingAncestor {
     pub entity_type: String,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct RemainingAncestorResponse {
     #[serde(rename(deserialize = "RemainingAncestor"))]
     remaining_ancestor: Option<RemainingAncestor>,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct StoreResponse {
     #[serde(rename(deserialize = "Description"))]
     description: String,
@@ -243,7 +242,7 @@ pub struct StoreResponse {
     failed_instances_count: u64,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct ErrorResponse {
     #[serde(rename(deserialize = "Method"))]
     method: String,
@@ -270,7 +269,7 @@ pub struct ErrorResponse {
     orthanc_error: String,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct ModifyResponse {
     #[serde(rename(deserialize = "ID"))]
     id: String,
@@ -727,9 +726,17 @@ fn check_http_error(
 
 mod datetime_format {
     use chrono::NaiveDateTime;
-    use serde::{self, Deserialize, Deserializer};
+    use serde::{self, Deserialize, Deserializer, Serializer};
 
     const FORMAT: &str = "%Y%m%dT%H%M%S";
+
+    pub fn serialize<S>(date: &NaiveDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = format!("{}", date.format(FORMAT));
+        serializer.serialize_str(&s)
+    }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
     where
