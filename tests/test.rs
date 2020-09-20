@@ -1,19 +1,10 @@
 use orthanc_client::*;
 use serde_json;
+use serde_json::{from_slice, json, Value};
 use std::env;
 use std::process::Command;
 
-fn run_curl(url: &str, username: &str, password: &str) -> Vec<u8> {
-    Command::new("curl")
-        .arg("--user")
-        .arg(format!("{}:{}", username, password))
-        .arg(url)
-        .output()
-        .unwrap()
-        .stdout
-}
-
-fn server_address() -> String {
+fn address() -> String {
     env::var("ORC_ORTHANC_ADDRESS").unwrap()
 }
 
@@ -25,36 +16,152 @@ fn password() -> String {
     env::var("ORC_ORTHANC_PASSWORD").unwrap()
 }
 
+fn client() -> OrthancClient {
+    OrthancClient::new(&address(), Some(&username()), Some(&password()))
+}
+
+fn first_patient() -> String {
+    client().list_patients().unwrap().remove(0)
+}
+
+fn first_study() -> String {
+    client().list_studies().unwrap().remove(0)
+}
+
+fn first_series() -> String {
+    client().list_series().unwrap().remove(0)
+}
+
+fn first_instance() -> String {
+    client().list_instances().unwrap().remove(0)
+}
+
+fn run_curl(url: &str) -> Vec<u8> {
+    Command::new("curl")
+        .arg("--user")
+        .arg(format!("{}:{}", username(), password()))
+        .arg(url)
+        .output()
+        .unwrap()
+        .stdout
+}
+
+fn expected_response(path: &str) -> Value {
+    from_slice(&run_curl(&format!("{}/{}", address(), path))).unwrap()
+}
+
+#[test]
+fn test_list_modalities() {
+    assert_eq!(
+        json!(client().list_modalities().unwrap()),
+        expected_response("modalities")
+    );
+}
+
+#[test]
+fn test_list_modalities_expanded() {
+    assert_eq!(
+        json!(client().list_modalities_expanded().unwrap()),
+        expected_response("modalities?expand")
+    );
+}
+
 #[test]
 fn test_list_patients() {
-    let address = &server_address();
-    let username = &username();
-    let password = &password();
-
-    let expected_patients_json =
-        run_curl(&format!("{}/patients", address), username, password);
-    let expected_patients: Vec<String> =
-        serde_json::from_slice(&expected_patients_json).unwrap();
-
-    let cl = OrthancClient::new(address, Some(username), Some(password));
-    let patients = cl.list_patients().unwrap();
-
-    assert_eq!(patients, expected_patients);
+    assert_eq!(
+        json!(client().list_patients().unwrap()),
+        expected_response("patients")
+    );
 }
 
 #[test]
 fn test_list_patients_expanded() {
-    let address = &server_address();
-    let username = &username();
-    let password = &password();
+    assert_eq!(
+        json!(client().list_patients_expanded().unwrap()),
+        expected_response("patients?expand")
+    );
+}
 
-    let expected_patients_json =
-        run_curl(&format!("{}/patients?expand", address), username, password);
-    let expected_patients: Vec<Patient> =
-        serde_json::from_slice(&expected_patients_json).unwrap();
+#[test]
+fn test_list_studies() {
+    assert_eq!(
+        json!(client().list_studies().unwrap()),
+        expected_response("studies")
+    );
+}
 
-    let cl = OrthancClient::new(address, Some(username), Some(password));
-    let patients = cl.list_patients_expanded().unwrap();
+#[test]
+fn test_list_studies_expanded() {
+    assert_eq!(
+        json!(client().list_studies_expanded().unwrap()),
+        expected_response("studies?expand")
+    );
+}
 
-    assert_eq!(patients, expected_patients);
+#[test]
+fn test_list_series() {
+    assert_eq!(
+        json!(client().list_series().unwrap()),
+        expected_response("series")
+    );
+}
+
+#[test]
+fn test_list_series_expanded() {
+    assert_eq!(
+        json!(client().list_series_expanded().unwrap()),
+        expected_response("series?expand")
+    );
+}
+
+#[test]
+fn test_list_instances() {
+    assert_eq!(
+        json!(client().list_instances().unwrap()),
+        expected_response("instances")
+    );
+}
+
+#[test]
+fn test_list_instances_expanded() {
+    assert_eq!(
+        json!(client().list_instances_expanded().unwrap()),
+        expected_response("instances?expand")
+    );
+}
+
+#[test]
+fn test_get_patient() {
+    let patient = first_patient();
+    assert_eq!(
+        json!(client().get_patient(&patient).unwrap()),
+        expected_response(&format!("patients/{}", patient))
+    );
+}
+
+#[test]
+fn test_get_study() {
+    let study = first_study();
+    assert_eq!(
+        json!(client().get_study(&study).unwrap()),
+        expected_response(&format!("studies/{}", study))
+    );
+}
+
+#[test]
+fn test_get_series() {
+    let series = first_series();
+    assert_eq!(
+        json!(client().get_series(&series).unwrap()),
+        expected_response(&format!("series/{}", series))
+    );
+}
+
+#[test]
+fn test_get_instance() {
+    let instance = first_instance();
+    assert_eq!(
+        json!(client().get_instance(&instance).unwrap()),
+        expected_response(&format!("instances/{}", instance))
+    );
 }
