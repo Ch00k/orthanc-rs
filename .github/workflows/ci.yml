@@ -32,11 +32,6 @@ jobs:
   integration_test:
     runs-on: ubuntu-latest
     name: integration_test
-    container:
-      image: jodogne/orthanc:latest
-      ports:
-        - 8042
-
     env:
       ORC_ORTHANC_ADDRESS: http://localhost:8042
 
@@ -48,6 +43,9 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
+      - name: run orthanc
+        uses: docker://jodogne/orthanc:latest
 
       - name: run tests
         run: ./integration_test.sh
