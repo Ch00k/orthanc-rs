@@ -623,6 +623,24 @@ impl OrthancClient {
         )
     }
 
+    pub fn anonymize_instance(
+        &self,
+        id: &str,
+        replace: Option<HashMap<String, String>>,
+        keep: Option<Vec<String>>,
+        keep_private_tags: Option<bool>,
+        dicom_version: Option<String>,
+    ) -> Result<ModifyResponse> {
+        self.anonymize(
+            "instances",
+            id,
+            replace,
+            keep,
+            keep_private_tags,
+            dicom_version,
+        )
+    }
+
     pub fn modify_patient(
         &self,
         id: &str,
@@ -648,6 +666,15 @@ impl OrthancClient {
         remove: Option<HashMap<String, String>>,
     ) -> Result<ModifyResponse> {
         self.modify("series", id, replace, remove, None)
+    }
+
+    pub fn modify_instance(
+        &self,
+        id: &str,
+        replace: Option<HashMap<String, String>>,
+        remove: Option<HashMap<String, String>>,
+    ) -> Result<ModifyResponse> {
+        self.modify("instances", id, replace, remove, None)
     }
 
     pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse> {
