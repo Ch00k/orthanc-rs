@@ -2231,6 +2231,445 @@ mod tests {
     }
 
     #[test]
+    fn test_anonymize() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/studies/foo/anonymize")
+            .expect_json_body(&Anonymization {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                keep_private_tags: None,
+                dicom_version: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Study"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .anonymize(
+                "studies",
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                None,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Study".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_modify_patient() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/patients/foo/modify")
+            .expect_json_body(&Modification {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                force: Some(true),
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Patient"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .modify_patient(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Patient".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_modify_study() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/studies/foo/modify")
+            .expect_json_body(&Modification {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                force: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Study"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .modify_study(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Study".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_modify_series() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/series/foo/modify")
+            .expect_json_body(&Modification {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                force: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Series"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .modify_series(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Series".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_modify_instance() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/instances/foo/modify")
+            .expect_json_body(&Modification {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                force: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Instance"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .modify_instance(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Instance".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_anonymize_patient() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/patients/foo/anonymize")
+            .expect_json_body(&Anonymization {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                keep_private_tags: None,
+                dicom_version: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Patient"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .anonymize_patient(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                None,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Patient".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_anonymize_study() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/studies/foo/anonymize")
+            .expect_json_body(&Anonymization {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                keep_private_tags: None,
+                dicom_version: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Study"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .anonymize_study(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                None,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Study".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_anonymize_series() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/series/foo/anonymize")
+            .expect_json_body(&Anonymization {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                keep_private_tags: None,
+                dicom_version: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Series"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .anonymize_series(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                None,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Series".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_anonymize_instance() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/instances/foo/anonymize")
+            .expect_json_body(&Anonymization {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                keep_private_tags: None,
+                dicom_version: None,
+            })
+            .return_status(200)
+            .return_body(
+                r#"
+                    {
+                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Path": "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
+                        "Type": "Instance"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl
+            .anonymize_instance(
+                "foo",
+                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                None,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            resp,
+            ModifyResponse {
+                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                path: "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
+                entity_type: "Instance".to_string(),
+            }
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
     fn test_delete_patient() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
