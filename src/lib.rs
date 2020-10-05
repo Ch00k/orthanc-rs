@@ -132,137 +132,89 @@ pub struct Instance {
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub struct UploadStatusResponse {
-    #[serde(rename(deserialize = "ID"))]
+    #[serde(rename = "ID")]
     pub id: String,
-
-    #[serde(rename(deserialize = "Status"))]
     pub status: String,
-
-    #[serde(rename(deserialize = "Path"))]
     pub path: String,
-
-    #[serde(rename(deserialize = "ParentPatient"))]
-    parent_patient: String,
-
-    #[serde(rename(deserialize = "ParentStudy"))]
-    parent_study: String,
-
-    #[serde(rename(deserialize = "ParentSeries"))]
+    pub parent_patient: String,
+    pub parent_study: String,
     parent_series: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub struct RemainingAncestor {
-    #[serde(rename(deserialize = "ID"))]
+    #[serde(rename = "ID")]
     pub id: String,
-
-    #[serde(rename(deserialize = "Path"))]
     pub path: String,
-
-    #[serde(rename(deserialize = "Type"))]
+    #[serde(rename = "Type")]
     pub entity_type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub struct RemainingAncestorResponse {
-    #[serde(rename(deserialize = "RemainingAncestor"))]
     remaining_ancestor: Option<RemainingAncestor>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub struct StoreResponse {
-    #[serde(rename(deserialize = "Description"))]
     description: String,
-
-    #[serde(rename(deserialize = "LocalAet"))]
-    locat_aet: String,
-
-    #[serde(rename(deserialize = "RemoteAet"))]
+    local_aet: String,
     remote_aet: String,
-
-    #[serde(rename(deserialize = "ParentResources"))]
-    parent_resounces: Vec<String>,
-
-    #[serde(rename(deserialize = "InstancesCount"))]
+    parent_resources: Vec<String>,
     instances_count: u64,
-
-    #[serde(rename(deserialize = "FailedInstancesCount"))]
     failed_instances_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub struct ErrorResponse {
-    #[serde(rename(deserialize = "Method"))]
     method: String,
-
-    #[serde(rename(deserialize = "Uri"))]
     uri: String,
-
-    #[serde(rename(deserialize = "Message"))]
     message: String,
-
-    #[serde(rename(deserialize = "Details"))]
     details: String,
-
-    #[serde(rename(deserialize = "HttpStatus"))]
     http_status: u16,
-
-    #[serde(rename(deserialize = "HttpError"))]
     http_error: String,
-
-    #[serde(rename(deserialize = "OrthancStatus"))]
     orthanc_status: u16,
-
-    #[serde(rename(deserialize = "OrthancError"))]
     orthanc_error: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub struct ModifyResponse {
-    #[serde(rename(deserialize = "ID"))]
+    #[serde(rename = "ID")]
     id: String,
-
-    #[serde(rename(deserialize = "PatientID"))]
+    #[serde(rename = "PatientID")]
     patient_id: String,
-
-    #[serde(rename(deserialize = "Path"))]
     path: String,
-
-    #[serde(rename(deserialize = "Type"))]
+    #[serde(rename = "Type")]
     entity_type: String,
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 struct Anonymization {
-    #[serde(rename = "Replace")]
     #[serde(skip_serializing_if = "Option::is_none")]
     replace: Option<HashMap<String, String>>,
-
-    #[serde(rename = "Keep")]
     #[serde(skip_serializing_if = "Option::is_none")]
     keep: Option<Vec<String>>,
-
-    #[serde(rename = "KeepPrivateTags")]
     #[serde(skip_serializing_if = "Option::is_none")]
     keep_private_tags: Option<bool>,
-
-    #[serde(rename = "DicomVersion")]
     #[serde(skip_serializing_if = "Option::is_none")]
     dicom_version: Option<String>,
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 struct Modification {
-    #[serde(rename = "Remove")]
     #[serde(skip_serializing_if = "Option::is_none")]
     remove: Option<HashMap<String, String>>,
-
-    #[serde(rename = "Replace")]
     #[serde(skip_serializing_if = "Option::is_none")]
     replace: Option<HashMap<String, String>>,
-
-    #[serde(rename = "Force")]
     #[serde(skip_serializing_if = "Option::is_none")]
     force: Option<bool>,
 }
@@ -2215,9 +2167,9 @@ mod tests {
             resp,
             StoreResponse {
                 description: "REST API".to_string(),
-                locat_aet: "US".to_string(),
+                local_aet: "US".to_string(),
                 remote_aet: "THEM".to_string(),
-                parent_resounces: vec![
+                parent_resources: vec![
                     "bar".to_string(),
                     "baz".to_string(),
                     "qux".to_string()
