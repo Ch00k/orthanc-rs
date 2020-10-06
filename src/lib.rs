@@ -51,6 +51,14 @@ impl From<str::Utf8Error> for OrthancError {
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+pub enum EntityType {
+    Patient,
+    Study,
+    Series,
+    Instance,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Modality {
     #[serde(rename = "AET")]
@@ -79,7 +87,7 @@ pub struct Patient {
     pub main_dicom_tags: HashMap<String, String>,
     pub studies: Vec<String>,
     #[serde(rename = "Type")]
-    pub entity_type: String,
+    pub entity_type: EntityType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -95,7 +103,7 @@ pub struct Study {
     pub patient_main_dicom_tags: HashMap<String, String>,
     pub series: Vec<String>,
     #[serde(rename = "Type")]
-    pub entity_type: String,
+    pub entity_type: EntityType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -112,7 +120,7 @@ pub struct Series {
     pub expected_number_of_instances: Option<u32>,
     pub instances: Vec<String>,
     #[serde(rename = "Type")]
-    pub entity_type: String,
+    pub entity_type: EntityType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -128,7 +136,7 @@ pub struct Instance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified_from: Option<String>,
     #[serde(rename = "Type")]
-    pub entity_type: String,
+    pub entity_type: EntityType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -150,7 +158,7 @@ pub struct RemainingAncestor {
     pub id: String,
     pub path: String,
     #[serde(rename = "Type")]
-    pub entity_type: String,
+    pub entity_type: EntityType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -192,7 +200,7 @@ pub struct ModifyResponse {
     patient_id: String,
     path: String,
     #[serde(rename = "Type")]
-    entity_type: String,
+    entity_type: EntityType,
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq)]
@@ -1320,7 +1328,7 @@ mod tests {
                     },
                     studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()]
                         .to_vec(),
-                    entity_type: "Patient".to_string(),
+                    entity_type: EntityType::Patient,
                 },
                 Patient {
                     id: "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe".to_string(),
@@ -1334,7 +1342,7 @@ mod tests {
                     },
                     studies: ["63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string()]
                         .to_vec(),
-                    entity_type: "Patient".to_string(),
+                    entity_type: EntityType::Patient,
                 },
             ]
         );
@@ -1441,7 +1449,7 @@ mod tests {
                         "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string()
                     ]
                     .to_vec(),
-                    entity_type: "Study".to_string(),
+                    entity_type: EntityType::Study,
                 },
                 Study {
                     id: "e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string(),
@@ -1468,7 +1476,7 @@ mod tests {
                         "54f8778a-75ba559c-db7c7c1a-c1056140-ef74d487".to_string()
                     ]
                     .to_vec(),
-                    entity_type: "Study".to_string(),
+                    entity_type: EntityType::Study,
                 },
             ]
         );
@@ -1569,7 +1577,7 @@ mod tests {
                         "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788".to_string(),
                     ]
                     .to_vec(),
-                    entity_type: "Series".to_string(),
+                    entity_type: EntityType::Series,
                 },
                 Series {
                     id: "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string(),
@@ -1594,7 +1602,7 @@ mod tests {
                         "1c81e7e8-30642777-ffc2ca41-c7536670-7ad68124".to_string(),
                     ]
                     .to_vec(),
-                    entity_type: "Series".to_string(),
+                    entity_type: EntityType::Series,
                 },
             ]
         );
@@ -1677,7 +1685,7 @@ mod tests {
                     modified_from: Some(
                         "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()
                     ),
-                    entity_type: "Instance".to_string()
+                    entity_type: EntityType::Instance
                 },
                 Instance {
                     id: "286a251e-46571bd6-0e14ab9a-1baadddc-d0146ea0".to_string(),
@@ -1695,7 +1703,7 @@ mod tests {
                     file_uuid: "86bbad65-2c98-4cb0-bf77-0ef0243410a4".to_string(),
                     file_size: 381642,
                     modified_from: None,
-                    entity_type: "Instance".to_string()
+                    entity_type: EntityType::Instance
                 },
             ]
         );
@@ -1752,7 +1760,7 @@ mod tests {
                 },
                 studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()]
                     .to_vec(),
-                entity_type: "Patient".to_string()
+                entity_type: EntityType::Patient
             },
         );
         assert_eq!(m.times_called(), 1);
@@ -1828,7 +1836,7 @@ mod tests {
                     "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string()
                 ]
                 .to_vec(),
-                entity_type: "Study".to_string()
+                entity_type: EntityType::Study
             },
         );
         assert_eq!(m.times_called(), 1);
@@ -1889,7 +1897,7 @@ mod tests {
                 modified_from: Some(
                     "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()
                 ),
-                entity_type: "Instance".to_string()
+                entity_type: EntityType::Instance
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -1962,7 +1970,7 @@ mod tests {
                     "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788".to_string(),
                 ]
                 .to_vec(),
-                entity_type: "Series".to_string()
+                entity_type: EntityType::Series
             },
         );
         assert_eq!(m.times_called(), 1);
@@ -2224,7 +2232,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Study".to_string(),
+                entity_type: EntityType::Study
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2275,7 +2283,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Study".to_string(),
+                entity_type: EntityType::Study,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2322,7 +2330,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Patient".to_string(),
+                entity_type: EntityType::Patient,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2369,7 +2377,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Study".to_string(),
+                entity_type: EntityType::Study,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2416,7 +2424,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Series".to_string(),
+                entity_type: EntityType::Series,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2463,7 +2471,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Instance".to_string(),
+                entity_type: EntityType::Instance,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2513,7 +2521,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Patient".to_string(),
+                entity_type: EntityType::Patient,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2563,7 +2571,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Study".to_string(),
+                entity_type: EntityType::Study,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2613,7 +2621,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Series".to_string(),
+                entity_type: EntityType::Series,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2663,7 +2671,7 @@ mod tests {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: "Instance".to_string(),
+                entity_type: EntityType::Instance,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2724,7 +2732,7 @@ mod tests {
                 remaining_ancestor: Some(RemainingAncestor {
                     id: "bar".to_string(),
                     path: "/patients/bar".to_string(),
-                    entity_type: "Patient".to_string(),
+                    entity_type: EntityType::Patient,
                 })
             }
         );
@@ -2762,7 +2770,7 @@ mod tests {
                 remaining_ancestor: Some(RemainingAncestor {
                     id: "bar".to_string(),
                     path: "/studies/bar".to_string(),
-                    entity_type: "Study".to_string(),
+                    entity_type: EntityType::Study,
                 })
             }
         );
@@ -2800,7 +2808,7 @@ mod tests {
                 remaining_ancestor: Some(RemainingAncestor {
                     id: "bar".to_string(),
                     path: "/series/bar".to_string(),
-                    entity_type: "Series".to_string(),
+                    entity_type: EntityType::Series,
                 })
             }
         );
