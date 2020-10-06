@@ -34,7 +34,7 @@ jobs:
     name: integration_test
     services:
       orthanc:
-        image: jodogne/orthanc:latest
+        image: jodogne/orthanc:1.7.1
         ports:
           - 8042:8042
     env:
