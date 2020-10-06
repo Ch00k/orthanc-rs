@@ -40,4 +40,6 @@ for f in $(find $ORC_DATAFILES_PATH/initial -type f); do
     $cmd
 done
 
-cargo test --test integration
+sleep 2
+
+RUST_TEST_THREADS=1 cargo test --test integration -- $@

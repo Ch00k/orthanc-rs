@@ -174,6 +174,95 @@ fn test_get_instance() {
 }
 
 #[test]
+fn test_delete() {
+    let instance = first_instance();
+    let instance = client().get_instance(&instance).unwrap();
+    let series = client().get_series(&instance.parent_series).unwrap();
+    let study = client().get_study(&series.parent_study).unwrap();
+    let patient = client().get_patient(&study.parent_patient).unwrap();
+
+    // delete instance
+    let resp = client().delete_instance(&instance.id).unwrap();
+    assert_eq!(
+        resp,
+        RemainingAncestorResponse {
+            remaining_ancestor: Some(RemainingAncestor {
+                id: instance.parent_series,
+                path: format!("/series/{}", series.id),
+                entity_type: EntityType::Series,
+            })
+        }
+    );
+    let resp = client().get_instance(&instance.id);
+    assert_eq!(
+        resp.unwrap_err(),
+        OrthancError {
+            details: "404".to_string(),
+            error_response: None,
+        },
+    );
+
+    // delete series
+    let resp = client().delete_series(&series.id).unwrap();
+    assert_eq!(
+        resp,
+        RemainingAncestorResponse {
+            remaining_ancestor: Some(RemainingAncestor {
+                id: series.parent_study,
+                path: format!("/studies/{}", study.id),
+                entity_type: EntityType::Study,
+            })
+        }
+    );
+    let resp = client().get_series(&series.id);
+    assert_eq!(
+        resp.unwrap_err(),
+        OrthancError {
+            details: "404".to_string(),
+            error_response: None,
+        },
+    );
+
+    // delete study
+    let resp = client().delete_study(&study.id).unwrap();
+    assert_eq!(
+        resp,
+        RemainingAncestorResponse {
+            remaining_ancestor: Some(RemainingAncestor {
+                id: study.parent_patient,
+                path: format!("/patients/{}", patient.id),
+                entity_type: EntityType::Patient,
+            })
+        }
+    );
+    let resp = client().get_study(&study.id);
+    assert_eq!(
+        resp.unwrap_err(),
+        OrthancError {
+            details: "404".to_string(),
+            error_response: None,
+        },
+    );
+
+    // delete patient
+    let resp = client().delete_patient(&patient.id).unwrap();
+    assert_eq!(
+        resp,
+        RemainingAncestorResponse {
+            remaining_ancestor: None
+        }
+    );
+    let resp = client().get_patient(&patient.id);
+    assert_eq!(
+        resp.unwrap_err(),
+        OrthancError {
+            details: "404".to_string(),
+            error_response: None,
+        },
+    );
+}
+
+#[test]
 fn test_upload_dicom() {
     let mut f = File::open(Path::new(&datafiles_path()).join("upload")).unwrap();
     let mut data = Vec::new();

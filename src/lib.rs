@@ -12,9 +12,9 @@ type Result<T> = result::Result<T, OrthancError>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OrthancError {
-    details: String,
+    pub details: String,
     // TODO: This is pretty ugly
-    error_response: Option<ErrorResponse>,
+    pub error_response: Option<ErrorResponse>,
 }
 
 impl fmt::Display for OrthancError {
@@ -148,7 +148,7 @@ pub struct UploadStatusResponse {
     pub path: String,
     pub parent_patient: String,
     pub parent_study: String,
-    parent_series: String,
+    pub parent_series: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -164,7 +164,7 @@ pub struct RemainingAncestor {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct RemainingAncestorResponse {
-    remaining_ancestor: Option<RemainingAncestor>,
+    pub remaining_ancestor: Option<RemainingAncestor>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -181,14 +181,14 @@ pub struct StoreResponse {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ErrorResponse {
-    method: String,
-    uri: String,
-    message: String,
-    details: String,
-    http_status: u16,
-    http_error: String,
-    orthanc_status: u16,
-    orthanc_error: String,
+    pub method: String,
+    pub uri: String,
+    pub message: String,
+    pub details: String,
+    pub http_status: u16,
+    pub http_error: String,
+    pub orthanc_status: u16,
+    pub orthanc_error: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
