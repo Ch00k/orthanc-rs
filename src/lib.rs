@@ -2530,7 +2530,7 @@ mod tests {
             .expect_json_body(&Anonymization {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                keep_private_tags: None,
+                keep_private_tags: Some(true),
                 dicom_version: None,
             })
             .return_status(200)
@@ -2552,7 +2552,7 @@ mod tests {
                 "foo",
                 Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
                 Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                None,
+                Some(true),
                 None,
             )
             .unwrap();
@@ -2580,7 +2580,7 @@ mod tests {
             .expect_json_body(&Anonymization {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                keep_private_tags: None,
+                keep_private_tags: Some(false),
                 dicom_version: None,
             })
             .return_status(200)
@@ -2602,7 +2602,7 @@ mod tests {
                 "foo",
                 Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
                 Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                None,
+                Some(false),
                 None,
             )
             .unwrap();
