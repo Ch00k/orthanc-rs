@@ -43,6 +43,16 @@ fn first_instance() -> String {
     client().list_instances().unwrap().remove(0)
 }
 
+fn get_instance_by_sop_instance_uid(sop_instance_uid: &str) -> Option<Instance> {
+    let instances = client().list_instances_expanded().unwrap();
+    for i in instances {
+        if i.main_dicom_tags["SOPInstanceUID"] == sop_instance_uid {
+            return Some(i);
+        }
+    }
+    return None;
+}
+
 fn run_curl(url: &str) -> Vec<u8> {
     Command::new("curl")
         .arg("--user")
@@ -175,8 +185,9 @@ fn test_get_instance() {
 
 #[test]
 fn test_delete() {
-    let instance = first_instance();
-    let instance = client().get_instance(&instance).unwrap();
+    let instance =
+        get_instance_by_sop_instance_uid("1.3.46.670589.11.1.5.0.7080.2012100313435153441")
+            .unwrap();
     let series = client().get_series(&instance.parent_series).unwrap();
     let study = client().get_study(&series.parent_study).unwrap();
     let patient = client().get_patient(&study.parent_patient).unwrap();
