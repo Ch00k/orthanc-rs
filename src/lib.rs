@@ -220,9 +220,9 @@ struct Anonymization {
 #[serde(rename_all = "PascalCase")]
 struct Modification {
     #[serde(skip_serializing_if = "Option::is_none")]
-    remove: Option<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     replace: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    remove: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     force: Option<bool>,
 }
@@ -276,14 +276,19 @@ impl OrthancClient {
         let resp = request.send()?;
         let status = resp.status();
         let body = resp.bytes()?;
-        let text = str::from_utf8(&body)?;
 
-        if let Err(err) = check_http_error(status, text) {
+        // TODO: This is not (unit-)testable due to the fact that
+        // `Mock.return_body()` only accepts `str`, which is unicode.
+        // Probably need to rethink HTTP error handling.
+        let text = String::from_utf8_lossy(&body);
+
+        if let Err(err) = check_http_error(status, &text) {
             return Err(err);
         }
         Ok(body)
     }
 
+    // TODO: Can I make one function out of these two?
     fn post(&self, path: &str, data: Value) -> Result<String> {
         let url = format!("{}/{}", self.server_address, path);
         let mut request = self.client.post(&url).json(&data);
@@ -293,6 +298,21 @@ impl OrthancClient {
         let body = resp.text()?;
 
         if let Err(err) = check_http_error(status, &body) {
+            return Err(err);
+        }
+        Ok(body)
+    }
+
+    fn post_receive_bytes(&self, path: &str, data: Value) -> Result<Bytes> {
+        let url = format!("{}/{}", self.server_address, path);
+        let mut request = self.client.post(&url).json(&data);
+        request = self.add_auth(request);
+        let resp = request.send()?;
+        let status = resp.status();
+        let body = resp.bytes()?;
+        let text = String::from_utf8_lossy(&body);
+
+        if let Err(err) = check_http_error(status, &text) {
             return Err(err);
         }
         Ok(body)
@@ -513,12 +533,12 @@ impl OrthancClient {
         entity: &str,
         id: &str,
         replace: Option<HashMap<String, String>>,
-        remove: Option<HashMap<String, String>>,
+        remove: Option<Vec<String>>,
         force: Option<bool>,
     ) -> Result<ModifyResponse> {
         let data = Modification {
-            remove,
             replace,
+            remove,
             force,
         };
         let resp = self.post(
@@ -605,7 +625,7 @@ impl OrthancClient {
         &self,
         id: &str,
         replace: Option<HashMap<String, String>>,
-        remove: Option<HashMap<String, String>>,
+        remove: Option<Vec<String>>,
     ) -> Result<ModifyResponse> {
         self.modify("patients", id, replace, remove, Some(true))
     }
@@ -614,7 +634,7 @@ impl OrthancClient {
         &self,
         id: &str,
         replace: Option<HashMap<String, String>>,
-        remove: Option<HashMap<String, String>>,
+        remove: Option<Vec<String>>,
     ) -> Result<ModifyResponse> {
         self.modify("studies", id, replace, remove, None)
     }
@@ -623,7 +643,7 @@ impl OrthancClient {
         &self,
         id: &str,
         replace: Option<HashMap<String, String>>,
-        remove: Option<HashMap<String, String>>,
+        remove: Option<Vec<String>>,
     ) -> Result<ModifyResponse> {
         self.modify("series", id, replace, remove, None)
     }
@@ -632,9 +652,18 @@ impl OrthancClient {
         &self,
         id: &str,
         replace: Option<HashMap<String, String>>,
-        remove: Option<HashMap<String, String>>,
-    ) -> Result<ModifyResponse> {
-        self.modify("instances", id, replace, remove, None)
+        remove: Option<Vec<String>>,
+    ) -> Result<Bytes> {
+        let data = Modification {
+            replace,
+            remove,
+            force: None,
+        };
+        let resp = self.post_receive_bytes(
+            &format!("instances/{}/modify", id),
+            serde_json::to_value(data)?,
+        )?;
+        Ok(resp)
     }
 
     pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse> {
@@ -2199,7 +2228,7 @@ mod tests {
             .expect_path("/studies/foo/modify")
             .expect_json_body(&Modification {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                remove: Some(vec!["Tag2".to_string()]),
                 force: None,
             })
             .return_status(200)
@@ -2221,7 +2250,7 @@ mod tests {
                 "studies",
                 "foo",
                 Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                Some(vec!["Tag2".to_string()]),
                 None,
             )
             .unwrap();
@@ -2299,7 +2328,7 @@ mod tests {
             .expect_path("/patients/foo/modify")
             .expect_json_body(&Modification {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                remove: Some(vec!["Tag2".to_string()]),
                 force: Some(true),
             })
             .return_status(200)
@@ -2320,7 +2349,7 @@ mod tests {
             .modify_patient(
                 "foo",
                 Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                Some(vec!["Tag2".to_string()]),
             )
             .unwrap();
 
@@ -2346,7 +2375,7 @@ mod tests {
             .expect_path("/studies/foo/modify")
             .expect_json_body(&Modification {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                remove: Some(vec!["Tag2".to_string()]),
                 force: None,
             })
             .return_status(200)
@@ -2367,7 +2396,7 @@ mod tests {
             .modify_study(
                 "foo",
                 Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                Some(vec!["Tag2".to_string()]),
             )
             .unwrap();
 
@@ -2393,7 +2422,7 @@ mod tests {
             .expect_path("/series/foo/modify")
             .expect_json_body(&Modification {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                remove: Some(vec!["Tag2".to_string()]),
                 force: None,
             })
             .return_status(200)
@@ -2414,7 +2443,7 @@ mod tests {
             .modify_series(
                 "foo",
                 Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                Some(vec!["Tag2".to_string()]),
             )
             .unwrap();
 
@@ -2440,20 +2469,11 @@ mod tests {
             .expect_path("/instances/foo/modify")
             .expect_json_body(&Modification {
                 replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                remove: Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                remove: Some(vec!["Tag2".to_string()]),
                 force: None,
             })
             .return_status(200)
-            .return_body(
-                r#"
-                    {
-                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
-                        "Path": "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
-                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
-                        "Type": "Instance"
-                    }
-                "#,
-            )
+            .return_body("foobar")
             .create_on(&mock_server);
 
         let cl = OrthancClient::new(&url, None, None);
@@ -2461,19 +2481,11 @@ mod tests {
             .modify_instance(
                 "foo",
                 Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(hashmap! {"Tag2".to_string() => "value2".to_string()}),
+                Some(vec!["Tag2".to_string()]),
             )
             .unwrap();
 
-        assert_eq!(
-            resp,
-            ModifyResponse {
-                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                path: "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Instance,
-            }
-        );
+        assert_eq!(resp, "foobar".as_bytes());
         assert_eq!(m.times_called(), 1);
     }
 

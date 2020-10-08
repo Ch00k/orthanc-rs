@@ -907,6 +907,7 @@ dependencies = [
  "chrono",
  "httpmock",
  "maplit",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
