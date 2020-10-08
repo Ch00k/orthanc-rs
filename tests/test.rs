@@ -1,11 +1,24 @@
+use maplit::hashmap;
 use orthanc_client::*;
+use regex::Regex;
 use serde_json;
 use serde_json::{from_slice, json, Value};
 use std::env;
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
 use std::process::Command;
+
+const SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.3724.2011072815265975004";
+const SOP_INSTANCE_UID_DELETE: &str = "1.3.46.670589.11.1.5.0.7080.2012100313435153441";
+//const SERIES_INSTANCE_UID: &str =
+//    "1.3.46.670589.11.436918600.1211176830.3842984857.54226705";
+//const STUDY_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.7116.2012100313043060185";
+//const PATIENT_ID: &str = "patient_2";
+
+const UPLOAD_INSTANCE_FILE_PATH: &str = "upload";
+
+const DCMDUMP_LINE_PATTERN: &str = r"\s*\(\d{4},\d{4}\)\s+[A-Z]{2}\s+\[(.*)\]\s+.*";
 
 fn address() -> String {
     env::var("ORC_ORTHANC_ADDRESS").unwrap()
@@ -61,6 +74,32 @@ fn run_curl(url: &str) -> Vec<u8> {
         .output()
         .unwrap()
         .stdout
+}
+
+fn dcmdump_line_pattern() -> Regex {
+    Regex::new(DCMDUMP_LINE_PATTERN).unwrap()
+}
+
+fn run_dcmdump(path: &str, tag_id: &str) -> String {
+    let output = Command::new("dcmdump")
+        .arg("--search")
+        .arg(tag_id)
+        .arg(path)
+        .output()
+        .unwrap()
+        .stdout;
+    String::from_utf8(output).unwrap()
+}
+
+fn assert_tag_value(path: &str, tag_id: &str, value: &str) {
+    let dcmdump_out = run_dcmdump(path, tag_id);
+    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
+    assert_eq!(groups.get(1).unwrap().as_str(), value);
+}
+
+fn assert_tag_absent(path: &str, tag_id: &str) {
+    let dcmdump_out = run_dcmdump(path, tag_id);
+    assert_eq!(dcmdump_out, "");
 }
 
 fn expected_response(path: &str) -> Value {
@@ -185,9 +224,7 @@ fn test_get_instance() {
 
 #[test]
 fn test_delete() {
-    let instance =
-        get_instance_by_sop_instance_uid("1.3.46.670589.11.1.5.0.7080.2012100313435153441")
-            .unwrap();
+    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID_DELETE).unwrap();
     let series = client().get_series(&instance.parent_series).unwrap();
     let study = client().get_study(&series.parent_study).unwrap();
     let patient = client().get_patient(&study.parent_patient).unwrap();
@@ -274,10 +311,36 @@ fn test_delete() {
 }
 
 #[test]
+fn test_modify_instance() {
+    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
+
+    let replace = hashmap! {
+        "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
+        "OperatorsName".to_string() => "Summer Smith".to_string()
+    };
+    let remove = vec!["SeriesTime".to_string(), "AcquisitionTime".to_string()];
+    let resp = client()
+        .modify_instance(&instance.id, Some(replace), Some(remove))
+        .unwrap();
+
+    let path = "/tmp/modified_instance";
+    let mut file = File::create("/tmp/modified_instance").unwrap();
+    file.write_all(&resp).unwrap();
+
+    assert_tag_value(path, "0008,0005", "ISO_IR 13");
+    assert_tag_value(path, "0008,1070", "Summer Smith");
+    assert_tag_absent(path, "0008,0031");
+    assert_tag_absent(path, "0008,0032");
+}
+
+#[test]
 fn test_upload_dicom() {
-    let mut f = File::open(Path::new(&datafiles_path()).join("upload")).unwrap();
-    let mut data = Vec::new();
-    f.read_to_end(&mut data).unwrap();
+    let data = fs::read(format!(
+        "{}/{}",
+        datafiles_path(),
+        UPLOAD_INSTANCE_FILE_PATH
+    ))
+    .unwrap();
 
     let resp = client().upload_dicom(&data).unwrap();
     assert_eq!(resp.status, "Success");

@@ -52,5 +52,8 @@ jobs:
         with:
           toolchain: stable
 
+      - name: install dcmtk
+        run: sudo apt-get install -y dcmtk
+
       - name: run tests
         run: ./integration_test.sh
