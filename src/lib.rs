@@ -610,15 +610,18 @@ impl OrthancClient {
         keep: Option<Vec<String>>,
         keep_private_tags: Option<bool>,
         dicom_version: Option<String>,
-    ) -> Result<ModifyResponse> {
-        self.anonymize(
-            "instances",
-            id,
+    ) -> Result<Bytes> {
+        let data = Anonymization {
             replace,
             keep,
             keep_private_tags,
             dicom_version,
-        )
+        };
+        let resp = self.post_receive_bytes(
+            &format!("instances/{}/anonymize", id),
+            serde_json::to_value(data)?,
+        )?;
+        Ok(resp)
     }
 
     pub fn modify_patient(
@@ -2654,16 +2657,7 @@ mod tests {
                 dicom_version: None,
             })
             .return_status(200)
-            .return_body(
-                r#"
-                    {
-                        "ID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
-                        "Path": "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
-                        "PatientID": "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c",
-                        "Type": "Instance"
-                    }
-                "#,
-            )
+            .return_body("foobar")
             .create_on(&mock_server);
 
         let cl = OrthancClient::new(&url, None, None);
@@ -2677,15 +2671,7 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq!(
-            resp,
-            ModifyResponse {
-                id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                path: "/instances/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Instance,
-            }
-        );
+        assert_eq!(resp, "foobar".as_bytes());
         assert_eq!(m.times_called(), 1);
     }
 

@@ -18,7 +18,7 @@ const SOP_INSTANCE_UID_DELETE: &str = "1.3.46.670589.11.1.5.0.7080.2012100313435
 
 const UPLOAD_INSTANCE_FILE_PATH: &str = "upload";
 
-const DCMDUMP_LINE_PATTERN: &str = r"\s*\(\d{4},\d{4}\)\s+[A-Z]{2}\s+\[(.*)\]\s+.*";
+const DCMDUMP_LINE_PATTERN: &str = r"\s*\(\d{4},\d{4}\)\s+[A-Z]{2}\s+([\[\(].*[\]\)])\s+.*";
 
 fn address() -> String {
     env::var("ORC_ORTHANC_ADDRESS").unwrap()
@@ -91,13 +91,27 @@ fn run_dcmdump(path: &str, tag_id: &str) -> String {
     String::from_utf8(output).unwrap()
 }
 
-fn assert_tag_value(path: &str, tag_id: &str, value: &str) {
+fn assert_tag_has_value(path: &str, tag_id: &str, value: &str) {
     let dcmdump_out = run_dcmdump(path, tag_id);
     let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
-    assert_eq!(groups.get(1).unwrap().as_str(), value);
+    assert_eq!(groups.get(1).unwrap().as_str(), format!("[{}]", value));
 }
 
-fn assert_tag_absent(path: &str, tag_id: &str) {
+fn assert_tag_value_matches(path: &str, tag_id: &str, pattern: &str) {
+    let re = Regex::new(pattern).unwrap();
+    let dcmdump_out = run_dcmdump(path, tag_id);
+    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
+    let tag_value = groups.get(1).unwrap().as_str();
+    assert!(re.is_match(tag_value));
+}
+
+fn assert_tag_is_empty(path: &str, tag_id: &str) {
+    let dcmdump_out = run_dcmdump(path, tag_id);
+    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
+    assert_eq!(groups.get(1).unwrap().as_str(), "(no value available)");
+}
+
+fn assert_tag_is_absent(path: &str, tag_id: &str) {
     let dcmdump_out = run_dcmdump(path, tag_id);
     assert_eq!(dcmdump_out, "");
 }
@@ -324,13 +338,66 @@ fn test_modify_instance() {
         .unwrap();
 
     let path = "/tmp/modified_instance";
-    let mut file = File::create("/tmp/modified_instance").unwrap();
+    let mut file = File::create(path).unwrap();
     file.write_all(&resp).unwrap();
 
-    assert_tag_value(path, "0008,0005", "ISO_IR 13");
-    assert_tag_value(path, "0008,1070", "Summer Smith");
-    assert_tag_absent(path, "0008,0031");
-    assert_tag_absent(path, "0008,0032");
+    assert_tag_has_value(path, "0008,0005", "ISO_IR 13");
+    assert_tag_has_value(path, "0008,1070", "Summer Smith");
+    assert_tag_is_absent(path, "0008,0031");
+    assert_tag_is_absent(path, "0008,0032");
+}
+
+#[test]
+fn test_anonymize_instance() {
+    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
+
+    let replace = hashmap! {
+        "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
+        "OperatorsName".to_string() => "Summer Smith".to_string()
+    };
+    let keep = vec![
+        "AccessionNumber".to_string(),
+        "StudyDescription".to_string(),
+    ];
+    let resp = client()
+        .anonymize_instance(&instance.id, Some(replace), Some(keep), None, None)
+        .unwrap();
+
+    let path = "/tmp/anonymized_instance";
+    let mut file = File::create(path).unwrap();
+    file.write_all(&resp).unwrap();
+
+    assert_tag_has_value(path, "0008,0005", "ISO_IR 13");
+    assert_tag_has_value(path, "0008,1070", "Summer Smith");
+    assert_tag_has_value(path, "0008,0050", "REMOVED");
+    assert_tag_has_value(path, "0008,1030", "Study 1");
+
+    // When anonymization is customized, Orthanc does not add the 0012,0063 tag. A bug?
+    //assert_tag_value_matches(
+    //    path,
+    //    "0012,0063",
+    //    r"\[Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile\]",
+    //);
+}
+
+#[test]
+fn test_anonymize_instance_empty_body() {
+    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
+    let resp = client()
+        .anonymize_instance(&instance.id, None, None, None, None)
+        .unwrap();
+
+    let path = "/tmp/anonymized_instance";
+    let mut file = File::create(path).unwrap();
+    file.write_all(&resp).unwrap();
+
+    assert_tag_is_empty(path, "0008,0050");
+    assert_tag_is_absent(path, "0008,1030");
+    assert_tag_value_matches(
+        path,
+        "0012,0063",
+        r"\[Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile\]",
+    );
 }
 
 #[test]
