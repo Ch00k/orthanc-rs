@@ -97,6 +97,17 @@ fn assert_tag_has_value(path: &str, tag_id: &str, value: &str) {
     assert_eq!(groups.get(1).unwrap().as_str(), format!("[{}]", value));
 }
 
+fn assert_tag_value_contains(path: &str, tag_id: &str, substring: &str) {
+    let dcmdump_out = run_dcmdump(path, tag_id);
+    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
+    assert!(groups
+        .get(1)
+        .unwrap()
+        .as_str()
+        .to_string()
+        .contains(substring));
+}
+
 fn assert_tag_value_matches(path: &str, tag_id: &str, pattern: &str) {
     let re = Regex::new(pattern).unwrap();
     let dcmdump_out = run_dcmdump(path, tag_id);
@@ -371,6 +382,7 @@ fn test_anonymize_instance() {
     assert_tag_has_value(path, "0008,1070", "Summer Smith");
     assert_tag_has_value(path, "0008,0050", "REMOVED");
     assert_tag_has_value(path, "0008,1030", "Study 1");
+    assert_tag_value_contains(path, "0010,0010", "Anonymized");
 
     // When anonymization is customized, Orthanc does not add the 0012,0063 tag. A bug?
     //assert_tag_value_matches(
@@ -393,6 +405,7 @@ fn test_anonymize_instance_empty_body() {
 
     assert_tag_is_empty(path, "0008,0050");
     assert_tag_is_absent(path, "0008,1030");
+    assert_tag_value_contains(path, "0010,0010", "Anonymized");
     assert_tag_value_matches(
         path,
         "0012,0063",
