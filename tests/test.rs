@@ -19,6 +19,8 @@ const SOP_INSTANCE_UID_DELETE: &str = "1.3.46.670589.11.1.5.0.7080.2012100313435
 const UPLOAD_INSTANCE_FILE_PATH: &str = "upload";
 
 const DCMDUMP_LINE_PATTERN: &str = r"\s*\(\d{4},\d{4}\)\s+[A-Z]{2}\s+([\[\(].*[\]\)])\s+.*";
+const DEIDENTIFICATION_TAG_PATTERN: &str =
+    r"\[Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile\]";
 
 fn address() -> String {
     env::var("ORC_ORTHANC_ADDRESS").unwrap()
@@ -385,11 +387,7 @@ fn test_anonymize_instance() {
     assert_tag_value_contains(path, "0010,0010", "Anonymized");
 
     // When anonymization is customized, Orthanc does not add the 0012,0063 tag. A bug?
-    //assert_tag_value_matches(
-    //    path,
-    //    "0012,0063",
-    //    r"\[Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile\]",
-    //);
+    //assert_tag_value_matches(path, "0012,0063", DEIDENTIFICATION_TAG_PATTERN);
 }
 
 #[test]
@@ -406,11 +404,7 @@ fn test_anonymize_instance_empty_body() {
     assert_tag_is_empty(path, "0008,0050");
     assert_tag_is_absent(path, "0008,1030");
     assert_tag_value_contains(path, "0010,0010", "Anonymized");
-    assert_tag_value_matches(
-        path,
-        "0012,0063",
-        r"\[Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile\]",
-    );
+    assert_tag_value_matches(path, "0012,0063", DEIDENTIFICATION_TAG_PATTERN);
 }
 
 #[test]
