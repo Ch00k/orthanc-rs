@@ -57,3 +57,8 @@ jobs:
 
       - name: run tests
         run: ./integration_test.sh
+
+      - name: upload coverage
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true
