@@ -9,4 +9,4 @@ trap cleanup EXIT
 sleep 2
 
 cargo install cargo-tarpaulin
-RUST_TEST_THREADS=1 cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
+cargo tarpaulin --test integration --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
