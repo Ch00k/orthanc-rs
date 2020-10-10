@@ -731,6 +731,42 @@ mod tests {
     use maplit::hashmap;
 
     #[test]
+    fn test_error_formatting() {
+        let error = OrthancError {
+            details: "400".to_string(),
+            error_response: Some(ErrorResponse {
+                method: "POST".to_string(),
+                uri: "/instances".to_string(),
+                message: "Bad file format".to_string(),
+                details: Some(
+                    "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string(),
+                ),
+                http_status: 400,
+                http_error: "Bad Request".to_string(),
+                orthanc_status: 15,
+                orthanc_error: "Bad file format".to_string(),
+            }),
+        };
+
+        // TODO: Any way to make the formatting nicer?
+        let expected_error_str = r#"400: Some(
+    ErrorResponse {
+        method: "POST",
+        uri: "/instances",
+        message: "Bad file format",
+        details: Some(
+            "Cannot parse an invalid DICOM file (size: 12 bytes)",
+        ),
+        http_status: 400,
+        http_error: "Bad Request",
+        orthanc_status: 15,
+        orthanc_error: "Bad file format",
+    },
+)"#;
+        assert_eq!(format!("{}", error), expected_error_str);
+    }
+
+    #[test]
     fn test_default_fields() {
         let cl = OrthancClient::new("http://localhost:8042", None, None);
         assert_eq!(cl.server_address, "http://localhost:8042");
