@@ -184,7 +184,7 @@ pub struct ErrorResponse {
     pub method: String,
     pub uri: String,
     pub message: String,
-    pub details: String,
+    pub details: Option<String>,
     pub http_status: u16,
     pub http_error: String,
     pub orthanc_status: u16,
@@ -195,12 +195,12 @@ pub struct ErrorResponse {
 #[serde(rename_all = "PascalCase")]
 pub struct ModifyResponse {
     #[serde(rename = "ID")]
-    id: String,
+    pub id: String,
     #[serde(rename = "PatientID")]
-    patient_id: String,
-    path: String,
+    pub patient_id: String,
+    pub path: String,
     #[serde(rename = "Type")]
-    entity_type: EntityType,
+    pub entity_type: EntityType,
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq)]
@@ -876,8 +876,9 @@ mod tests {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
-                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
-                        .to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
                     http_status: 400,
                     http_error: "Bad Request".to_string(),
                     orthanc_status: 15,
@@ -924,8 +925,9 @@ mod tests {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
-                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
-                        .to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
                     http_status: 400,
                     http_error: "Bad Request".to_string(),
                     orthanc_status: 15,
@@ -972,8 +974,9 @@ mod tests {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
-                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
-                        .to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
                     http_status: 400,
                     http_error: "Bad Request".to_string(),
                     orthanc_status: 15,
@@ -1020,8 +1023,9 @@ mod tests {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
-                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
-                        .to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
                     http_status: 400,
                     http_error: "Bad Request".to_string(),
                     orthanc_status: 15,
@@ -1068,8 +1072,9 @@ mod tests {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
-                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
-                        .to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
                     http_status: 400,
                     http_error: "Bad Request".to_string(),
                     orthanc_status: 15,
@@ -2948,8 +2953,9 @@ mod tests {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
-                    details: "Cannot parse an invalid DICOM file (size: 12 bytes)"
-                        .to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
                     http_status: 400,
                     http_error: "Bad Request".to_string(),
                     orthanc_status: 15,
