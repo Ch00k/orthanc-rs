@@ -731,6 +731,100 @@ mod tests {
     use maplit::hashmap;
 
     #[test]
+    fn test_error_formatting() {
+        let error = OrthancError {
+            details: "400".to_string(),
+            error_response: Some(ErrorResponse {
+                method: "POST".to_string(),
+                uri: "/instances".to_string(),
+                message: "Bad file format".to_string(),
+                details: Some(
+                    "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string(),
+                ),
+                http_status: 400,
+                http_error: "Bad Request".to_string(),
+                orthanc_status: 15,
+                orthanc_error: "Bad file format".to_string(),
+            }),
+        };
+
+        // TODO: Any way to make the formatting nicer?
+        let expected_error_str = r#"400: Some(
+    ErrorResponse {
+        method: "POST",
+        uri: "/instances",
+        message: "Bad file format",
+        details: Some(
+            "Cannot parse an invalid DICOM file (size: 12 bytes)",
+        ),
+        http_status: 400,
+        http_error: "Bad Request",
+        orthanc_status: 15,
+        orthanc_error: "Bad file format",
+    },
+)"#;
+        assert_eq!(format!("{}", error), expected_error_str);
+    }
+
+    #[test]
+    fn test_error_from_serde_json() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/patients")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body("foo")
+            .create_on(&mock_server);
+
+        let cl = OrthancClient::new(&url, None, None);
+        let resp = cl.list_patients();
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: "expected ident at line 1 column 2".to_string(),
+                error_response: None,
+            },
+        )
+    }
+
+    #[test]
+    fn test_error_from_reqwest() {
+        let cl = OrthancClient::new("http://foo", Some("foo"), Some("bar"));
+        let resp = cl.list_patients();
+
+        let expected_err = concat!(
+            r#"error sending request for url (http://foo/patients): "#,
+            r#"error trying to connect: dns error: "#,
+            r#"failed to lookup address information: "#,
+            r#"Temporary failure in name resolution"#,
+        );
+        assert_eq!(
+            resp.unwrap_err(),
+            OrthancError {
+                details: expected_err.to_string(),
+                error_response: None,
+            },
+        );
+    }
+
+    #[test]
+    fn test_error_from_utf8() {
+        let sparkle_heart = vec![0, 159, 146, 150];
+        let utf8_error = str::from_utf8(&sparkle_heart).unwrap_err();
+        let orthanc_error = OrthancError::from(utf8_error);
+        assert_eq!(
+            orthanc_error,
+            OrthancError {
+                details: "invalid utf-8 sequence of 1 bytes from index 1".to_string(),
+                error_response: None,
+            }
+        );
+    }
+
+    #[test]
     fn test_default_fields() {
         let cl = OrthancClient::new("http://localhost:8042", None, None);
         assert_eq!(cl.server_address, "http://localhost:8042");
