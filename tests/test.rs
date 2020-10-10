@@ -513,6 +513,184 @@ fn test_anonymize_instance_empty_body() {
 }
 
 #[test]
+fn test_anonymize_series() {
+    let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
+    let initial_tags = client().get_instance_tags(&series.instances[0]).unwrap();
+
+    assert_ne!(initial_tags["SpecificCharacterSet"], "ISO_IR 13");
+    assert_ne!(initial_tags["OperatorsName"], "Summer Smith");
+
+    let replace = hashmap! {
+        "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
+        "OperatorsName".to_string() => "Summer Smith".to_string()
+    };
+    let keep = vec![
+        "AccessionNumber".to_string(),
+        "SeriesDescription".to_string(),
+    ];
+    let resp = client()
+        .anonymize_series(&series.id, Some(replace), Some(keep), None, None)
+        .unwrap();
+
+    let modified_series = client().get_series(&resp.id).unwrap();
+
+    let tags = client()
+        .get_instance_tags(&modified_series.instances[0])
+        .unwrap();
+
+    assert_eq!(tags["SpecificCharacterSet"], "ISO_IR 13");
+    assert_eq!(tags["OperatorsName"], "Summer Smith");
+    assert_eq!(tags["AccessionNumber"], initial_tags["AccessionNumber"]);
+    assert_eq!(tags["SeriesDescription"], initial_tags["SeriesDescription"]);
+}
+
+#[test]
+fn test_anonymize_series_empty_body() {
+    let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
+    let initial_tags = client().get_instance_tags(&series.instances[0]).unwrap();
+
+    assert_ne!(initial_tags["AccessionNumber"], "");
+    assert_ne!(initial_tags["StudyID"], "");
+
+    let resp = client()
+        .anonymize_series(&series.id, None, None, None, None)
+        .unwrap();
+
+    let modified_series = client().get_series(&resp.id).unwrap();
+
+    let tags = client()
+        .get_instance_tags(&modified_series.instances[0])
+        .unwrap();
+
+    assert_eq!(tags["AccessionNumber"], "");
+    assert_eq!(tags["StudyID"], "");
+}
+
+#[test]
+fn test_anonymize_study() {
+    let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
+    let initial_series = client().get_series(&study.series[0]).unwrap();
+    let initial_tags = client()
+        .get_instance_tags(&initial_series.instances[0])
+        .unwrap();
+
+    assert_ne!(initial_tags["SpecificCharacterSet"], "ISO_IR 13");
+    assert_ne!(initial_tags["OperatorsName"], "Summer Smith");
+
+    let replace = hashmap! {
+        "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
+        "OperatorsName".to_string() => "Summer Smith".to_string()
+    };
+    let keep = vec![
+        "AccessionNumber".to_string(),
+        "StudyDescription".to_string(),
+    ];
+    let resp = client()
+        .anonymize_study(&study.id, Some(replace), Some(keep), None, None)
+        .unwrap();
+
+    let modified_study = client().get_study(&resp.id).unwrap();
+    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let tags = client()
+        .get_instance_tags(&modified_series.instances[0])
+        .unwrap();
+
+    assert_eq!(tags["SpecificCharacterSet"], "ISO_IR 13");
+    assert_eq!(tags["OperatorsName"], "Summer Smith");
+    assert_eq!(tags["AccessionNumber"], initial_tags["AccessionNumber"]);
+    assert_eq!(tags["StudyDescription"], initial_tags["StudyDescription"]);
+}
+
+#[test]
+fn test_anonymize_study_empty_body() {
+    let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
+    let initial_series = client().get_series(&study.series[0]).unwrap();
+    let initial_tags = client()
+        .get_instance_tags(&initial_series.instances[0])
+        .unwrap();
+
+    assert_ne!(initial_tags["AccessionNumber"], "");
+    assert_ne!(initial_tags["StudyID"], "");
+
+    let resp = client()
+        .anonymize_study(&study.id, None, None, None, None)
+        .unwrap();
+
+    let modified_study = client().get_study(&resp.id).unwrap();
+    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let tags = client()
+        .get_instance_tags(&modified_series.instances[0])
+        .unwrap();
+
+    assert_eq!(tags["AccessionNumber"], "");
+    assert_eq!(tags["StudyID"], "");
+}
+
+#[test]
+fn test_anonymize_patient() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let initial_study = client().get_study(&patient.studies[0]).unwrap();
+    let initial_series = client().get_series(&initial_study.series[0]).unwrap();
+    let initial_tags = client()
+        .get_instance_tags(&initial_series.instances[0])
+        .unwrap();
+
+    assert_ne!(initial_tags["SpecificCharacterSet"], "ISO_IR 13");
+    assert_ne!(initial_tags["OperatorsName"], "Summer Smith");
+
+    let replace = hashmap! {
+        "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
+        "OperatorsName".to_string() => "Summer Smith".to_string()
+    };
+    let keep = vec![
+        "AccessionNumber".to_string(),
+        "StudyDescription".to_string(),
+    ];
+    let resp = client()
+        .anonymize_patient(&patient.id, Some(replace), Some(keep), None, None)
+        .unwrap();
+
+    let modified_patient = client().get_patient(&resp.id).unwrap();
+    let modified_study = client().get_study(&modified_patient.studies[0]).unwrap();
+    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let tags = client()
+        .get_instance_tags(&modified_series.instances[0])
+        .unwrap();
+
+    assert_eq!(tags["SpecificCharacterSet"], "ISO_IR 13");
+    assert_eq!(tags["OperatorsName"], "Summer Smith");
+    assert_eq!(tags["AccessionNumber"], initial_tags["AccessionNumber"]);
+    assert_eq!(tags["StudyDescription"], initial_tags["StudyDescription"]);
+}
+
+#[test]
+fn test_anonymize_patient_empty_body() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let initial_study = client().get_study(&patient.studies[0]).unwrap();
+    let initial_series = client().get_series(&initial_study.series[0]).unwrap();
+    let initial_tags = client()
+        .get_instance_tags(&initial_series.instances[0])
+        .unwrap();
+
+    assert_ne!(initial_tags["AccessionNumber"], "");
+    assert_ne!(initial_tags["StudyID"], "");
+
+    let resp = client()
+        .anonymize_patient(&patient.id, None, None, None, None)
+        .unwrap();
+
+    let modified_patient = client().get_patient(&resp.id).unwrap();
+    let modified_study = client().get_study(&modified_patient.studies[0]).unwrap();
+    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let tags = client()
+        .get_instance_tags(&modified_series.instances[0])
+        .unwrap();
+
+    assert_eq!(tags["AccessionNumber"], "");
+    assert_eq!(tags["StudyID"], "");
+}
+
+#[test]
 fn test_upload_dicom() {
     let data = fs::read(format!(
         "{}/{}",
