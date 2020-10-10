@@ -11,10 +11,9 @@ use std::process::Command;
 
 const SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.3724.2011072815265975004";
 const SOP_INSTANCE_UID_DELETE: &str = "1.3.46.670589.11.1.5.0.7080.2012100313435153441";
-//const SERIES_INSTANCE_UID: &str =
-//    "1.3.46.670589.11.436918600.1211176830.3842984857.54226705";
-//const STUDY_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.7116.2012100313043060185";
-//const PATIENT_ID: &str = "patient_2";
+const SERIES_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.3724.2011072815265926000";
+const STUDY_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.6560.2011072814060507000";
+const PATIENT_ID: &str = "patient_2";
 
 const UPLOAD_INSTANCE_FILE_PATH: &str = "upload";
 
@@ -58,11 +57,41 @@ fn first_instance() -> String {
     client().list_instances().unwrap().remove(0)
 }
 
-fn get_instance_by_sop_instance_uid(sop_instance_uid: &str) -> Option<Instance> {
+fn find_instance_by_sop_instance_uid(sop_instance_uid: &str) -> Option<Instance> {
     let instances = client().list_instances_expanded().unwrap();
     for i in instances {
         if i.main_dicom_tags["SOPInstanceUID"] == sop_instance_uid {
             return Some(i);
+        }
+    }
+    return None;
+}
+
+fn find_series_by_series_instance_uid(series_instance_uid: &str) -> Option<Series> {
+    let series = client().list_series_expanded().unwrap();
+    for s in series {
+        if s.main_dicom_tags["SeriesInstanceUID"] == series_instance_uid {
+            return Some(s);
+        }
+    }
+    return None;
+}
+
+fn find_study_by_study_instance_uid(study_instance_uid: &str) -> Option<Study> {
+    let studies = client().list_studies_expanded().unwrap();
+    for s in studies {
+        if s.main_dicom_tags["StudyInstanceUID"] == study_instance_uid {
+            return Some(s);
+        }
+    }
+    return None;
+}
+
+fn find_patient_by_patient_id(patient_id: &str) -> Option<Patient> {
+    let patients = client().list_patients_expanded().unwrap();
+    for p in patients {
+        if p.main_dicom_tags["PatientID"] == patient_id {
+            return Some(p);
         }
     }
     return None;
@@ -251,7 +280,7 @@ fn test_get_instance() {
 
 #[test]
 fn test_delete() {
-    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID_DELETE).unwrap();
+    let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID_DELETE).unwrap();
     let series = client().get_series(&instance.parent_series).unwrap();
     let study = client().get_study(&series.parent_study).unwrap();
     let patient = client().get_patient(&study.parent_patient).unwrap();
@@ -339,7 +368,7 @@ fn test_delete() {
 
 #[test]
 fn test_modify_instance() {
-    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
+    let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
 
     let replace = hashmap! {
         "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
@@ -361,8 +390,84 @@ fn test_modify_instance() {
 }
 
 #[test]
+fn test_modify_series() {
+    let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
+    let tags = series.main_dicom_tags;
+    assert_ne!(tags["BodyPartExamined"], "PINKY");
+    assert_ne!(tags["OperatorsName"], "Summer Smith");
+    assert!(tags.contains_key("StationName"));
+    assert!(tags.contains_key("SeriesDate"));
+
+    let replace = hashmap! {
+        "BodyPartExamined".to_string() => "PINKY".to_string(),
+        "OperatorsName".to_string() => "Summer Smith".to_string()
+    };
+    let remove = vec!["StationName".to_string(), "SeriesDate".to_string()];
+    let resp = client()
+        .modify_series(&series.id, Some(replace), Some(remove))
+        .unwrap();
+    let modified_series = client().get_series(&resp.id).unwrap();
+    let modified_tags = modified_series.main_dicom_tags;
+
+    assert_eq!(modified_tags["BodyPartExamined"], "PINKY");
+    assert_eq!(modified_tags["OperatorsName"], "Summer Smith");
+    assert!(!modified_tags.contains_key("StationName"));
+    assert!(!modified_tags.contains_key("SeriesDate"));
+}
+
+#[test]
+fn test_modify_study() {
+    let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
+    let tags = study.main_dicom_tags;
+    assert_ne!(tags["StudyID"], "foobar");
+    assert_ne!(tags["ReferringPhysicianName"], "Summer Smith");
+    assert!(tags.contains_key("InstitutionName"));
+    assert!(tags.contains_key("StudyTime"));
+
+    let replace = hashmap! {
+        "StudyID".to_string() => "foobar".to_string(),
+        "ReferringPhysicianName".to_string() => "Summer Smith".to_string()
+    };
+    let remove = vec!["InstitutionName".to_string(), "StudyTime".to_string()];
+    let resp = client()
+        .modify_study(&study.id, Some(replace), Some(remove))
+        .unwrap();
+    let modified_study = client().get_study(&resp.id).unwrap();
+    let modified_tags = modified_study.main_dicom_tags;
+
+    assert_eq!(modified_tags["StudyID"], "foobar");
+    assert_eq!(modified_tags["ReferringPhysicianName"], "Summer Smith");
+    assert!(!modified_tags.contains_key("InstitutionName"));
+    assert!(!modified_tags.contains_key("StudyTime"));
+}
+
+#[test]
+fn test_modify_patient() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let tags = patient.main_dicom_tags;
+    assert_ne!(tags["PatientID"], "42");
+    assert_ne!(tags["PatientName"], "Summer Smith");
+    assert!(tags.contains_key("PatientSex"));
+
+    let replace = hashmap! {
+        "PatientID".to_string() => "42".to_string(),
+        "PatientName".to_string() => "Summer Smith".to_string()
+    };
+    let remove = vec!["PatientSex".to_string()];
+    let resp = client()
+        .modify_patient(&patient.id, Some(replace), Some(remove))
+        .unwrap();
+    let modified_patient = client().get_patient(&resp.id).unwrap();
+    let modified_tags = modified_patient.main_dicom_tags;
+
+    assert_eq!(modified_tags["PatientID"], "42");
+    assert_eq!(modified_tags["PatientName"], "Summer Smith");
+    assert!(!modified_tags.contains_key("PatientSex"));
+}
+
+#[test]
 fn test_anonymize_instance() {
-    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
+    let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
 
     let replace = hashmap! {
         "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
@@ -392,7 +497,7 @@ fn test_anonymize_instance() {
 
 #[test]
 fn test_anonymize_instance_empty_body() {
-    let instance = get_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
+    let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
     let resp = client()
         .anonymize_instance(&instance.id, None, None, None, None)
         .unwrap();
