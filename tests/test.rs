@@ -8,6 +8,7 @@ use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process::Command;
+use zip;
 
 const SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.3724.2011072815265975004";
 const SOP_INSTANCE_UID_DELETE: &str = "1.3.46.670589.11.1.5.0.7080.2012100313435153441";
@@ -276,6 +277,89 @@ fn test_get_instance() {
         json!(client().get_instance(&instance).unwrap()),
         expected_response(&format!("instances/{}", instance))
     );
+}
+
+#[test]
+fn test_get_instance_tags() {
+    let instance = first_instance();
+    assert_eq!(
+        json!(client().get_instance_tags(&instance).unwrap()),
+        expected_response(&format!("instances/{}/simplified-tags", instance))
+    );
+}
+
+#[test]
+fn test_get_instance_tags_expanded() {
+    let instance = first_instance();
+    assert_eq!(
+        json!(client().get_instance_tags_expanded(&instance).unwrap()),
+        expected_response(&format!("instances/{}/tags", instance))
+    );
+}
+
+#[test]
+fn test_get_patient_dicom() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let resp = client().get_patient_dicom(&patient.id).unwrap();
+
+    let reader = std::io::Cursor::new(resp);
+    let zip = zip::ZipArchive::new(reader).unwrap();
+    let mut files: Vec<&str> = zip.file_names().collect();
+    files.sort();
+
+    assert_eq!(
+        files,
+        vec![
+            "patient_2 Patient 2/REMOVED Study 1/MR Series 1/MR000000.dcm",
+            "patient_2 Patient 2/REMOVED Study 1/PR/PR000000.dcm",
+        ]
+    );
+}
+
+#[test]
+fn test_get_study_dicom() {
+    let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
+    let resp = client().get_study_dicom(&study.id).unwrap();
+
+    let reader = std::io::Cursor::new(resp);
+    let zip = zip::ZipArchive::new(reader).unwrap();
+    let mut files: Vec<&str> = zip.file_names().collect();
+    files.sort();
+
+    assert_eq!(
+        files,
+        vec![
+            "patient_2 Patient 2/REMOVED Study 1/MR Series 1/MR000000.dcm",
+            "patient_2 Patient 2/REMOVED Study 1/PR/PR000000.dcm",
+        ]
+    );
+}
+
+#[test]
+fn test_get_series_dicom() {
+    let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
+    let resp = client().get_study_dicom(&series.id).unwrap();
+
+    let reader = std::io::Cursor::new(resp);
+    let zip = zip::ZipArchive::new(reader).unwrap();
+    let mut files: Vec<&str> = zip.file_names().collect();
+    files.sort();
+
+    assert_eq!(
+        files,
+        vec!["patient_2 Patient 2/REMOVED Study 1/MR Series 1/MR000000.dcm",]
+    );
+}
+
+#[test]
+fn test_get_intance_dicom() {
+    let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
+    let resp = client().get_instance_dicom(&instance.id).unwrap();
+
+    let path = "/tmp/instance_dicom";
+    let mut file = File::create(path).unwrap();
+    file.write_all(&resp).unwrap();
+    assert_tag_has_value(path, "0008,0018", SOP_INSTANCE_UID);
 }
 
 #[test]
