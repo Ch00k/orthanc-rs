@@ -338,7 +338,7 @@ fn test_get_study_dicom() {
 #[test]
 fn test_get_series_dicom() {
     let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
-    let resp = client().get_study_dicom(&series.id).unwrap();
+    let resp = client().get_series_dicom(&series.id).unwrap();
 
     let reader = std::io::Cursor::new(resp);
     let zip = zip::ZipArchive::new(reader).unwrap();
