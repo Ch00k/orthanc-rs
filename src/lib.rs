@@ -147,16 +147,28 @@ pub struct Instance {
     pub anonymized_from: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct UploadStatusResponse {
-    #[serde(rename = "ID")]
-    pub id: String,
-    pub status: String,
-    pub path: String,
-    pub parent_patient: String,
-    pub parent_study: String,
-    pub parent_series: String,
+pub struct Anonymization {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    replace: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    keep: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    keep_private_tags: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dicom_version: Option<String>,
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Modification {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    replace: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    remove: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    force: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -171,8 +183,14 @@ pub struct RemainingAncestor {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct RemainingAncestorResponse {
-    pub remaining_ancestor: Option<RemainingAncestor>,
+pub struct UploadResponse {
+    #[serde(rename = "ID")]
+    pub id: String,
+    pub status: String,
+    pub path: String,
+    pub parent_patient: String,
+    pub parent_study: String,
+    pub parent_series: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -201,7 +219,7 @@ pub struct ErrorResponse {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct ModifyResponse {
+pub struct ModificationResponse {
     #[serde(rename = "ID")]
     pub id: String,
     #[serde(rename = "PatientID")]
@@ -211,28 +229,10 @@ pub struct ModifyResponse {
     pub entity_type: EntityType,
 }
 
-#[derive(Serialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-struct Anonymization {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    replace: Option<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    keep: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    keep_private_tags: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    dicom_version: Option<String>,
-}
-
-#[derive(Serialize, Debug, Eq, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-struct Modification {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    replace: Option<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    remove: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    force: Option<bool>,
+pub struct RemainingAncestorResponse {
+    pub remaining_ancestor: Option<RemainingAncestor>,
 }
 
 pub struct OrthancClient {
@@ -521,7 +521,7 @@ impl OrthancClient {
         keep: Option<Vec<String>>,
         keep_private_tags: Option<bool>,
         dicom_version: Option<String>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         let data = Anonymization {
             replace,
             keep,
@@ -532,7 +532,7 @@ impl OrthancClient {
             &format!("{}/{}/anonymize", entity, id),
             serde_json::to_value(data)?,
         )?;
-        let json: ModifyResponse = serde_json::from_str(&resp)?;
+        let json: ModificationResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -543,7 +543,7 @@ impl OrthancClient {
         replace: Option<HashMap<String, String>>,
         remove: Option<Vec<String>>,
         force: Option<bool>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         let data = Modification {
             replace,
             remove,
@@ -553,7 +553,7 @@ impl OrthancClient {
             &format!("{}/{}/modify", entity, id),
             serde_json::to_value(data)?,
         )?;
-        let json: ModifyResponse = serde_json::from_str(&resp)?;
+        let json: ModificationResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -564,7 +564,7 @@ impl OrthancClient {
         keep: Option<Vec<String>>,
         keep_private_tags: Option<bool>,
         dicom_version: Option<String>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         self.anonymize(
             "patients",
             id,
@@ -582,7 +582,7 @@ impl OrthancClient {
         keep: Option<Vec<String>>,
         keep_private_tags: Option<bool>,
         dicom_version: Option<String>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         self.anonymize(
             "studies",
             id,
@@ -600,7 +600,7 @@ impl OrthancClient {
         keep: Option<Vec<String>>,
         keep_private_tags: Option<bool>,
         dicom_version: Option<String>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         self.anonymize(
             "series",
             id,
@@ -637,7 +637,7 @@ impl OrthancClient {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<Vec<String>>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         self.modify("patients", id, replace, remove, Some(true))
     }
 
@@ -646,7 +646,7 @@ impl OrthancClient {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<Vec<String>>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         self.modify("studies", id, replace, remove, None)
     }
 
@@ -655,7 +655,7 @@ impl OrthancClient {
         id: &str,
         replace: Option<HashMap<String, String>>,
         remove: Option<Vec<String>>,
-    ) -> Result<ModifyResponse> {
+    ) -> Result<ModificationResponse> {
         self.modify("series", id, replace, remove, None)
     }
 
@@ -677,9 +677,9 @@ impl OrthancClient {
         Ok(resp)
     }
 
-    pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadStatusResponse> {
+    pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadResponse> {
         let resp = self.post_bytes("instances", data)?;
-        let json: UploadStatusResponse = serde_json::from_str(&resp)?;
+        let json: UploadResponse = serde_json::from_str(&resp)?;
         Ok(json)
     }
 }
@@ -2428,7 +2428,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -2479,7 +2479,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -2526,7 +2526,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -2573,7 +2573,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -2620,7 +2620,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -2700,7 +2700,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -2750,7 +2750,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -2800,7 +2800,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            ModifyResponse {
+            ModificationResponse {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
@@ -3073,7 +3073,7 @@ mod tests {
 
         assert_eq!(
             resp,
-            UploadStatusResponse {
+            UploadResponse {
                 id: "foo".to_string(),
                 status: "Success".to_string(),
                 path: "/instances/foo".to_string(),
