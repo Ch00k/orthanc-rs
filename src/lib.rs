@@ -20,6 +20,7 @@ pub enum Entity {
     Instance,
 }
 
+/// Modality
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Modality {
@@ -38,6 +39,7 @@ pub struct Modality {
     pub allow_transcoding: bool,
 }
 
+/// Patient
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Patient {
@@ -54,6 +56,7 @@ pub struct Patient {
     pub anonymized_from: Option<String>,
 }
 
+/// Study
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Study {
@@ -72,6 +75,7 @@ pub struct Study {
     pub anonymized_from: Option<String>,
 }
 
+/// Series
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Series {
@@ -91,6 +95,7 @@ pub struct Series {
     pub anonymized_from: Option<String>,
 }
 
+/// Instance
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Instance {
@@ -215,6 +220,7 @@ pub struct ApiError {
 
 type Result<T> = result::Result<T, Error>;
 
+/// Error type
 #[derive(Debug, Eq, PartialEq)]
 pub struct Error {
     pub details: String,
@@ -255,6 +261,29 @@ impl From<str::Utf8Error> for Error {
     }
 }
 
+/// Client type
+///
+/// The client itself is fairly simple. There are only 3 fields that the end-user should care
+/// about: `server` (the address of the Orthanc server, an HTTP(S) URL), `username` and `password`.
+///
+/// Creating a new client instance:
+///
+/// ```
+/// let client = Client::new("http://localhost:8042".to_string());
+/// ```
+///
+/// Authentication (setting `username`/`password`) can be done by calling the `auth` method:
+///
+/// ```
+/// client.auth("username".to_string(), "password".to_string());
+/// ```
+///
+/// Or combined:
+///
+/// ```
+/// let client = Client::new("http://localhost:8042".to_string())
+///     .auth("username".to_string(), "password".to_string());
+/// ```
 pub struct Client {
     server: String,
     username: Option<String>,
@@ -263,7 +292,11 @@ pub struct Client {
 }
 
 impl Client {
-    /// Create a new client.
+    /// Creates a new client instance
+    ///
+    /// ```
+    /// let client = Client::new("http://localhost:8042".to_string());
+    /// ```
     pub fn new(server: String) -> Client {
         Client {
             server,
@@ -273,6 +306,12 @@ impl Client {
         }
     }
 
+    /// Adds authentication to the client instance
+    ///
+    /// ```
+    /// let client = Client::new("http://localhost:8042".to_string())
+    ///     .auth("username".to_string(), "password".to_string());
+    /// ```
     pub fn auth(mut self, username: String, password: String) -> Client {
         self.username = Some(username);
         self.password = Some(password);
@@ -346,128 +385,167 @@ impl Client {
         self.list("patients")
     }
 
+    /// List studies
     pub fn studies(&self) -> Result<Vec<String>> {
         self.list("studies")
     }
 
+    /// List series
     pub fn series_list(&self) -> Result<Vec<String>> {
         self.list("series")
     }
 
+    /// List instances
     pub fn instances(&self) -> Result<Vec<String>> {
         self.list("instances")
     }
 
+    /// List all modalities in an epanded format
     pub fn modalities_expanded(&self) -> Result<HashMap<String, Modality>> {
         let resp = self.get("modalities?expand")?;
         let json: HashMap<String, Modality> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// List all patients in an epanded format
     pub fn patients_expanded(&self) -> Result<Vec<Patient>> {
         let resp = self.get("patients?expand")?;
         let json: Vec<Patient> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// List all studies in an epanded format
     pub fn studies_expanded(&self) -> Result<Vec<Study>> {
         let resp = self.get("studies?expand")?;
         let json: Vec<Study> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// List all series in an epanded format
     pub fn series_expanded(&self) -> Result<Vec<Series>> {
         let resp = self.get("series?expand")?;
         let json: Vec<Series> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// List all instances in an epanded format
     pub fn instances_expanded(&self) -> Result<Vec<Instance>> {
         let resp = self.get("instances?expand")?;
         let json: Vec<Instance> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Get a patient by its ID
     pub fn patient(&self, id: &str) -> Result<Patient> {
         let resp = self.get(&format!("patients/{}", id))?;
         let json: Patient = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Get a study by its ID
     pub fn study(&self, id: &str) -> Result<Study> {
         let resp = self.get(&format!("studies/{}", id))?;
         let json: Study = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Get a series by its ID
     pub fn series(&self, id: &str) -> Result<Series> {
         let resp = self.get(&format!("series/{}", id))?;
         let json: Series = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Get an instance by its ID
     pub fn instance(&self, id: &str) -> Result<Instance> {
         let resp = self.get(&format!("instances/{}", id))?;
         let json: Instance = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Get all DICOM tags of an instance in a simplified format
+    ///
+    /// See related Orthanc documentation
+    /// [section](https://book.orthanc-server.com/users/rest.html#accessing-the-dicom-fields-of-an-instance-as-a-json-file)
+    /// for details
     pub fn instance_tags(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/simplified-tags", id))?;
         let json: Value = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Get all DICOM tags of an instance in an extended format
+    ///
+    /// See related Orthanc documentation
+    /// [section](https://book.orthanc-server.com/users/rest.html#accessing-the-dicom-fields-of-an-instance-as-a-json-file)
+    /// for details
     pub fn instance_tags_expanded(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/tags", id))?;
         let json: Value = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Download a patient as a collection of DICOM files
+    ///
+    /// Downloaded file a ZIP archive
     pub fn patient_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("patients/{}/archive", id);
         self.get(&path)
     }
 
+    /// Download a study as a collection of DICOM files
+    ///
+    /// Downloaded file a ZIP archive
     pub fn study_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("studies/{}/archive", id);
         self.get(&path)
     }
 
+    /// Download a series as a collection of DICOM files
+    ///
+    /// Downloaded file a ZIP archive
     pub fn series_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("series/{}/archive", id);
         self.get(&path)
     }
 
+    /// Download an instance as a DICOM file
     pub fn instance_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("instances/{}/file", id);
         self.get(&path)
     }
 
+    /// Delete a patient
     pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("patients/{}", id))?;
         let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Delete a study
     pub fn delete_study(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("studies/{}", id))?;
         let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Delete a series
     pub fn delete_series(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("series/{}", id))?;
         let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Delete an instance
     pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("instances/{}", id))?;
         let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
+    /// Send a C-ECHO request to a remote modality
+    ///
+    /// If no error is returned, the request was successful
     pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
         let mut data = HashMap::new();
         // TODO: This does not seem idiomatic
@@ -481,6 +559,10 @@ impl Client {
         .map(|_| ())
     }
 
+    /// Send a C-STORE request to a remote modality
+    ///
+    /// `ids` is a slice of entity IDs to send. An ID can signify either of Patient, Study, Series
+    /// or instance
     pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResult> {
         let resp = self.post(
             &format!("modalities/{}/store", modality),
@@ -528,6 +610,7 @@ impl Client {
         Ok(json)
     }
 
+    /// Anonymize a patient
     pub fn anonymize_patient(
         &self,
         id: &str,
@@ -536,6 +619,7 @@ impl Client {
         self.anonymize("patients", id, anonymization)
     }
 
+    /// Anonymize a study
     pub fn anonymize_study(
         &self,
         id: &str,
@@ -544,6 +628,7 @@ impl Client {
         self.anonymize("studies", id, anonymization)
     }
 
+    /// Anonymize a series
     pub fn anonymize_series(
         &self,
         id: &str,
@@ -552,6 +637,9 @@ impl Client {
         self.anonymize("series", id, anonymization)
     }
 
+    /// Anonymize an instance
+    ///
+    /// The anonymized instance is returned in the response as a DICOM file
     pub fn anonymize_instance(
         &self,
         id: &str,
@@ -574,6 +662,7 @@ impl Client {
         Ok(resp)
     }
 
+    /// Modify a patient
     pub fn modify_patient(
         &self,
         id: &str,
@@ -582,6 +671,7 @@ impl Client {
         self.modify("patients", id, modification)
     }
 
+    /// Modify a study
     pub fn modify_study(
         &self,
         id: &str,
@@ -590,6 +680,7 @@ impl Client {
         self.modify("studies", id, modification)
     }
 
+    /// Modify a series
     pub fn modify_series(
         &self,
         id: &str,
@@ -598,6 +689,9 @@ impl Client {
         self.modify("series", id, modification)
     }
 
+    /// Modify an instance
+    ///
+    /// The modified instance is returned in the response as a DICOM file
     pub fn modify_instance(&self, id: &str, modification: Modification) -> Result<Bytes> {
         let resp = self.post(
             &format!("instances/{}/modify", id),
@@ -606,6 +700,13 @@ impl Client {
         Ok(resp)
     }
 
+    /// Upload a DICOM file to Orthanc
+    ///
+    /// ```
+    /// let data = fs::read("/tmp/instance.dcm").unwrap();
+    /// let client = Client::new("http://localhost:8042");
+    /// client.upload(&data).unwrap();
+    /// ```
     pub fn upload(&self, data: &[u8]) -> Result<UploadResult> {
         let resp = self.post_bytes("instances", data)?;
         let json: UploadResult = serde_json::from_slice(&resp)?;
