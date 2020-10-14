@@ -289,101 +289,50 @@ impl Client {
         }
     }
 
-    fn get(&self, path: &str) -> Result<String> {
-        let url = format!("{}/{}", self.server, &path);
-        let mut request = self.client.get(&url);
-        request = self.add_auth(request);
-        let resp = request.send()?;
-        let status = resp.status();
-        let body = resp.text()?;
-
-        if let Err(err) = check_http_error(status, &body) {
-            return Err(err);
-        }
-        Ok(body)
-    }
-
-    fn get_bytes(&self, path: &str) -> Result<Bytes> {
+    fn get(&self, path: &str) -> Result<Bytes> {
         let url = format!("{}/{}", self.server, &path);
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
         let status = resp.status();
         let body = resp.bytes()?;
-
-        // TODO: This is not (unit-)testable due to the fact that
-        // `Mock.return_body()` only accepts `str`, which is unicode.
-        // Probably need to rethink HTTP error handling.
-        let text = String::from_utf8_lossy(&body);
-
-        if let Err(err) = check_http_error(status, &text) {
-            return Err(err);
-        }
-        Ok(body)
+        check_http_error(status, body)
     }
 
-    // TODO: Can I make one function out of these two?
-    fn post(&self, path: &str, data: Value) -> Result<String> {
-        let url = format!("{}/{}", self.server, path);
-        let mut request = self.client.post(&url).json(&data);
-        request = self.add_auth(request);
-        let resp = request.send()?;
-        let status = resp.status();
-        let body = resp.text()?;
-
-        if let Err(err) = check_http_error(status, &body) {
-            return Err(err);
-        }
-        Ok(body)
-    }
-
-    fn post_receive_bytes(&self, path: &str, data: Value) -> Result<Bytes> {
+    fn post(&self, path: &str, data: Value) -> Result<Bytes> {
         let url = format!("{}/{}", self.server, path);
         let mut request = self.client.post(&url).json(&data);
         request = self.add_auth(request);
         let resp = request.send()?;
         let status = resp.status();
         let body = resp.bytes()?;
-        let text = String::from_utf8_lossy(&body);
-
-        if let Err(err) = check_http_error(status, &text) {
-            return Err(err);
-        }
-        Ok(body)
+        check_http_error(status, body)
     }
 
-    fn post_bytes(&self, path: &str, data: &[u8]) -> Result<String> {
+    fn post_bytes(&self, path: &str, data: &[u8]) -> Result<Bytes> {
         let url = format!("{}/{}", self.server, path);
-        // TODO: .to_vec() here is probably not a good idea
+        // TODO: .to_vec() here is probably not a good idea?
         let mut request = self.client.post(&url).body(data.to_vec());
         request = self.add_auth(request);
         let resp = request.send()?;
         let status = resp.status();
-        let body = resp.text()?;
-
-        if let Err(err) = check_http_error(status, &body) {
-            return Err(err);
-        }
-        Ok(body)
+        let body = resp.bytes()?;
+        check_http_error(status, body)
     }
 
-    fn delete(&self, path: &str) -> Result<String> {
+    fn delete(&self, path: &str) -> Result<Bytes> {
         let url = format!("{}/{}", self.server, &path);
         let mut request = self.client.delete(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
         let status = resp.status();
-        let body = resp.text()?;
-
-        if let Err(err) = check_http_error(status, &body) {
-            return Err(err);
-        }
-        Ok(body)
+        let body = resp.bytes()?;
+        check_http_error(status, body)
     }
 
     fn list(&self, entity: &str) -> Result<Vec<String>> {
         let resp = self.get(entity)?;
-        let json: Vec<String> = serde_json::from_str(&resp)?;
+        let json: Vec<String> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -411,111 +360,111 @@ impl Client {
 
     pub fn modalities_expanded(&self) -> Result<HashMap<String, Modality>> {
         let resp = self.get("modalities?expand")?;
-        let json: HashMap<String, Modality> = serde_json::from_str(&resp)?;
+        let json: HashMap<String, Modality> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn patients_expanded(&self) -> Result<Vec<Patient>> {
         let resp = self.get("patients?expand")?;
-        let json: Vec<Patient> = serde_json::from_str(&resp)?;
+        let json: Vec<Patient> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn studies_expanded(&self) -> Result<Vec<Study>> {
         let resp = self.get("studies?expand")?;
-        let json: Vec<Study> = serde_json::from_str(&resp)?;
+        let json: Vec<Study> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn series_expanded(&self) -> Result<Vec<Series>> {
         let resp = self.get("series?expand")?;
-        let json: Vec<Series> = serde_json::from_str(&resp)?;
+        let json: Vec<Series> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn instances_expanded(&self) -> Result<Vec<Instance>> {
         let resp = self.get("instances?expand")?;
-        let json: Vec<Instance> = serde_json::from_str(&resp)?;
+        let json: Vec<Instance> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn patient(&self, id: &str) -> Result<Patient> {
         let resp = self.get(&format!("patients/{}", id))?;
-        let json: Patient = serde_json::from_str(&resp)?;
+        let json: Patient = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn study(&self, id: &str) -> Result<Study> {
         let resp = self.get(&format!("studies/{}", id))?;
-        let json: Study = serde_json::from_str(&resp)?;
+        let json: Study = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn series(&self, id: &str) -> Result<Series> {
         let resp = self.get(&format!("series/{}", id))?;
-        let json: Series = serde_json::from_str(&resp)?;
+        let json: Series = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn instance(&self, id: &str) -> Result<Instance> {
         let resp = self.get(&format!("instances/{}", id))?;
-        let json: Instance = serde_json::from_str(&resp)?;
+        let json: Instance = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn instance_tags(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/simplified-tags", id))?;
-        let json: Value = serde_json::from_str(&resp)?;
+        let json: Value = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn instance_tags_expanded(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/tags", id))?;
-        let json: Value = serde_json::from_str(&resp)?;
+        let json: Value = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn patient_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("patients/{}/archive", id);
-        self.get_bytes(&path)
+        self.get(&path)
     }
 
     pub fn study_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("studies/{}/archive", id);
-        self.get_bytes(&path)
+        self.get(&path)
     }
 
     pub fn series_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("series/{}/archive", id);
-        self.get_bytes(&path)
+        self.get(&path)
     }
 
     pub fn instance_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("instances/{}/file", id);
-        self.get_bytes(&path)
+        self.get(&path)
     }
 
     pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("patients/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn delete_study(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("studies/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn delete_series(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("series/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
     pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("instances/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -537,7 +486,7 @@ impl Client {
             &format!("modalities/{}/store", modality),
             serde_json::json!(ids),
         )?;
-        let json: StoreResult = serde_json::from_str(&resp)?;
+        let json: StoreResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -561,7 +510,7 @@ impl Client {
             &format!("{}/{}/anonymize", entity, id),
             serde_json::to_value(data)?,
         )?;
-        let json: ModificationResult = serde_json::from_str(&resp)?;
+        let json: ModificationResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -575,7 +524,7 @@ impl Client {
             &format!("{}/{}/modify", entity, id),
             serde_json::to_value(modification)?,
         )?;
-        let json: ModificationResult = serde_json::from_str(&resp)?;
+        let json: ModificationResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -618,7 +567,7 @@ impl Client {
                 dicom_version: None,
             },
         };
-        let resp = self.post_receive_bytes(
+        let resp = self.post(
             &format!("instances/{}/anonymize", id),
             serde_json::to_value(data)?,
         )?;
@@ -650,7 +599,7 @@ impl Client {
     }
 
     pub fn modify_instance(&self, id: &str, modification: Modification) -> Result<Bytes> {
-        let resp = self.post_receive_bytes(
+        let resp = self.post(
             &format!("instances/{}/modify", id),
             serde_json::to_value(modification)?,
         )?;
@@ -659,25 +608,19 @@ impl Client {
 
     pub fn upload(&self, data: &[u8]) -> Result<UploadResult> {
         let resp = self.post_bytes("instances", data)?;
-        let json: UploadResult = serde_json::from_str(&resp)?;
+        let json: UploadResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 }
 
-fn check_http_error(
-    response_status: reqwest::StatusCode,
-    response_body: &str,
-) -> Result<()> {
-    if response_status >= reqwest::StatusCode::BAD_REQUEST {
-        if response_body.is_empty() {
-            return Err(Error::new(response_status.as_str(), None));
+fn check_http_error(status: reqwest::StatusCode, body: Bytes) -> Result<Bytes> {
+    if status >= reqwest::StatusCode::BAD_REQUEST {
+        if body.is_empty() {
+            return Err(Error::new(status.as_str(), None));
         };
-        return Err(Error::new(
-            response_status.as_str(),
-            serde_json::from_str(response_body)?,
-        ));
+        return Err(Error::new(status.as_str(), serde_json::from_slice(&body)?));
     }
-    Ok(())
+    Ok(body)
 }
 
 mod datetime_format {
@@ -842,26 +785,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_bytes() {
-        let mock_server = MockServer::start();
-        let url = mock_server.url("");
-
-        let m = Mock::new()
-            .expect_method(Method::GET)
-            .expect_path("/foo")
-            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
-            .return_status(200)
-            .return_body("bar")
-            .create_on(&mock_server);
-
-        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
-        let resp = cl.get_bytes("foo").unwrap();
-
-        assert_eq!(resp, "bar");
-        assert_eq!(m.times_called(), 1);
-    }
-
-    #[test]
     fn test_post() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
@@ -974,55 +897,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_bytes_error_response() {
-        let mock_server = MockServer::start();
-        let url = mock_server.url("");
-
-        let m = Mock::new()
-            .expect_method(Method::GET)
-            .expect_path("/foo")
-            .return_status(400)
-            .return_body(
-                r#"
-                    {
-                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
-                        "HttpError" : "Bad Request",
-                        "HttpStatus" : 400,
-                        "Message" : "Bad file format",
-                        "Method" : "POST",
-                        "OrthancError" : "Bad file format",
-                        "OrthancStatus" : 15,
-                        "Uri" : "/instances"
-                    }
-                "#,
-            )
-            .create_on(&mock_server);
-
-        let cl = Client::new(url);
-        let resp = cl.get_bytes("foo");
-
-        assert_eq!(
-            resp.unwrap_err(),
-            Error {
-                details: "400".to_string(),
-                api_error: Some(ApiError {
-                    method: "POST".to_string(),
-                    uri: "/instances".to_string(),
-                    message: "Bad file format".to_string(),
-                    details: Some(
-                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
-                    ),
-                    http_status: 400,
-                    http_error: "Bad Request".to_string(),
-                    orthanc_status: 15,
-                    orthanc_error: "Bad file format".to_string(),
-                },),
-            },
-        );
-        assert_eq!(m.times_called(), 1);
-    }
-
-    #[test]
     fn test_post_error_response() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
@@ -1049,55 +923,6 @@ mod tests {
 
         let cl = Client::new(url);
         let resp = cl.post("foo", serde_json::json!("bar"));
-
-        assert_eq!(
-            resp.unwrap_err(),
-            Error {
-                details: "400".to_string(),
-                api_error: Some(ApiError {
-                    method: "POST".to_string(),
-                    uri: "/instances".to_string(),
-                    message: "Bad file format".to_string(),
-                    details: Some(
-                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
-                    ),
-                    http_status: 400,
-                    http_error: "Bad Request".to_string(),
-                    orthanc_status: 15,
-                    orthanc_error: "Bad file format".to_string(),
-                },),
-            },
-        );
-        assert_eq!(m.times_called(), 1);
-    }
-
-    #[test]
-    fn test_post_receive_bytes_error_response() {
-        let mock_server = MockServer::start();
-        let url = mock_server.url("");
-
-        let m = Mock::new()
-            .expect_method(Method::POST)
-            .expect_path("/foo")
-            .return_status(400)
-            .return_body(
-                r#"
-                    {
-                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
-                        "HttpError" : "Bad Request",
-                        "HttpStatus" : 400,
-                        "Message" : "Bad file format",
-                        "Method" : "POST",
-                        "OrthancError" : "Bad file format",
-                        "OrthancStatus" : 15,
-                        "Uri" : "/instances"
-                    }
-                "#,
-            )
-            .create_on(&mock_server);
-
-        let cl = Client::new(url);
-        let resp = cl.post_receive_bytes("foo", serde_json::json!("bar"));
 
         assert_eq!(
             resp.unwrap_err(),
@@ -3093,7 +2918,8 @@ mod tests {
 
     #[test]
     fn test_check_http_error_ok() {
-        let res = check_http_error(reqwest::StatusCode::PERMANENT_REDIRECT, "foo");
+        let res =
+            check_http_error(reqwest::StatusCode::PERMANENT_REDIRECT, Bytes::from("foo"));
         assert!(res.is_ok());
     }
 
@@ -3101,18 +2927,20 @@ mod tests {
     fn test_check_http_error_error() {
         let res = check_http_error(
             reqwest::StatusCode::BAD_REQUEST,
-            r#"
-                {
-                    "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
-                    "HttpError" : "Bad Request",
-                    "HttpStatus" : 400,
-                    "Message" : "Bad file format",
-                    "Method" : "POST",
-                    "OrthancError" : "Bad file format",
-                    "OrthancStatus" : 15,
-                    "Uri" : "/instances"
-                }
-            "#,
+            Bytes::from(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            ),
         );
         assert_eq!(
             res.unwrap_err(),
@@ -3136,7 +2964,7 @@ mod tests {
 
     #[test]
     fn test_check_http_error_error_empty_body() {
-        let res = check_http_error(reqwest::StatusCode::UNAUTHORIZED, "");
+        let res = check_http_error(reqwest::StatusCode::UNAUTHORIZED, Bytes::from(""));
         assert_eq!(
             res.unwrap_err(),
             Error {
@@ -3149,7 +2977,10 @@ mod tests {
     // TODO: Firgure out how to handle this
     #[test]
     fn test_check_http_error_error_random_body() {
-        let res = check_http_error(reqwest::StatusCode::GATEWAY_TIMEOUT, "foo bar baz");
+        let res = check_http_error(
+            reqwest::StatusCode::GATEWAY_TIMEOUT,
+            Bytes::from("foo bar baz"),
+        );
         assert_eq!(
             res.unwrap_err(),
             Error {
