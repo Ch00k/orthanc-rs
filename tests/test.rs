@@ -38,28 +38,28 @@ fn datafiles_path() -> String {
     env::var("ORC_DATAFILES_PATH").unwrap()
 }
 
-fn client() -> OrthancClient {
-    OrthancClient::new(&address(), Some(&username()), Some(&password()))
+fn client() -> Client {
+    Client::new(&address(), Some(&username()), Some(&password()))
 }
 
 fn first_patient() -> String {
-    client().list_patients().unwrap().remove(0)
+    client().patients().unwrap().remove(0)
 }
 
 fn first_study() -> String {
-    client().list_studies().unwrap().remove(0)
+    client().studies().unwrap().remove(0)
 }
 
 fn first_series() -> String {
-    client().list_series().unwrap().remove(0)
+    client().series_list().unwrap().remove(0)
 }
 
 fn first_instance() -> String {
-    client().list_instances().unwrap().remove(0)
+    client().instances().unwrap().remove(0)
 }
 
 fn find_instance_by_sop_instance_uid(sop_instance_uid: &str) -> Option<Instance> {
-    let instances = client().list_instances_expanded().unwrap();
+    let instances = client().instances_expanded().unwrap();
     for i in instances {
         if i.main_dicom_tags["SOPInstanceUID"] == sop_instance_uid {
             return Some(i);
@@ -69,7 +69,7 @@ fn find_instance_by_sop_instance_uid(sop_instance_uid: &str) -> Option<Instance>
 }
 
 fn find_series_by_series_instance_uid(series_instance_uid: &str) -> Option<Series> {
-    let series = client().list_series_expanded().unwrap();
+    let series = client().series_expanded().unwrap();
     for s in series {
         if s.main_dicom_tags["SeriesInstanceUID"] == series_instance_uid {
             return Some(s);
@@ -79,7 +79,7 @@ fn find_series_by_series_instance_uid(series_instance_uid: &str) -> Option<Serie
 }
 
 fn find_study_by_study_instance_uid(study_instance_uid: &str) -> Option<Study> {
-    let studies = client().list_studies_expanded().unwrap();
+    let studies = client().studies_expanded().unwrap();
     for s in studies {
         if s.main_dicom_tags["StudyInstanceUID"] == study_instance_uid {
             return Some(s);
@@ -89,7 +89,7 @@ fn find_study_by_study_instance_uid(study_instance_uid: &str) -> Option<Study> {
 }
 
 fn find_patient_by_patient_id(patient_id: &str) -> Option<Patient> {
-    let patients = client().list_patients_expanded().unwrap();
+    let patients = client().patients_expanded().unwrap();
     for p in patients {
         if p.main_dicom_tags["PatientID"] == patient_id {
             return Some(p);
@@ -166,7 +166,7 @@ fn expected_response(path: &str) -> Value {
 #[test]
 fn test_list_modalities() {
     assert_eq!(
-        json!(client().list_modalities().unwrap()),
+        json!(client().modalities().unwrap()),
         expected_response("modalities")
     );
 }
@@ -174,7 +174,7 @@ fn test_list_modalities() {
 #[test]
 fn test_list_modalities_expanded() {
     assert_eq!(
-        json!(client().list_modalities_expanded().unwrap()),
+        json!(client().modalities_expanded().unwrap()),
         expected_response("modalities?expand")
     );
 }
@@ -182,7 +182,7 @@ fn test_list_modalities_expanded() {
 #[test]
 fn test_list_patients() {
     assert_eq!(
-        json!(client().list_patients().unwrap()),
+        json!(client().patients().unwrap()),
         expected_response("patients")
     );
 }
@@ -190,7 +190,7 @@ fn test_list_patients() {
 #[test]
 fn test_list_patients_expanded() {
     assert_eq!(
-        json!(client().list_patients_expanded().unwrap()),
+        json!(client().patients_expanded().unwrap()),
         expected_response("patients?expand")
     );
 }
@@ -198,7 +198,7 @@ fn test_list_patients_expanded() {
 #[test]
 fn test_list_studies() {
     assert_eq!(
-        json!(client().list_studies().unwrap()),
+        json!(client().studies().unwrap()),
         expected_response("studies")
     );
 }
@@ -206,7 +206,7 @@ fn test_list_studies() {
 #[test]
 fn test_list_studies_expanded() {
     assert_eq!(
-        json!(client().list_studies_expanded().unwrap()),
+        json!(client().studies_expanded().unwrap()),
         expected_response("studies?expand")
     );
 }
@@ -214,7 +214,7 @@ fn test_list_studies_expanded() {
 #[test]
 fn test_list_series() {
     assert_eq!(
-        json!(client().list_series().unwrap()),
+        json!(client().series_list().unwrap()),
         expected_response("series")
     );
 }
@@ -222,7 +222,7 @@ fn test_list_series() {
 #[test]
 fn test_list_series_expanded() {
     assert_eq!(
-        json!(client().list_series_expanded().unwrap()),
+        json!(client().series_expanded().unwrap()),
         expected_response("series?expand")
     );
 }
@@ -230,7 +230,7 @@ fn test_list_series_expanded() {
 #[test]
 fn test_list_instances() {
     assert_eq!(
-        json!(client().list_instances().unwrap()),
+        json!(client().instances().unwrap()),
         expected_response("instances")
     );
 }
@@ -238,7 +238,7 @@ fn test_list_instances() {
 #[test]
 fn test_list_instances_expanded() {
     assert_eq!(
-        json!(client().list_instances_expanded().unwrap()),
+        json!(client().instances_expanded().unwrap()),
         expected_response("instances?expand")
     );
 }
@@ -247,7 +247,7 @@ fn test_list_instances_expanded() {
 fn test_get_patient() {
     let patient = first_patient();
     assert_eq!(
-        json!(client().get_patient(&patient).unwrap()),
+        json!(client().patient(&patient).unwrap()),
         expected_response(&format!("patients/{}", patient))
     );
 }
@@ -256,7 +256,7 @@ fn test_get_patient() {
 fn test_get_study() {
     let study = first_study();
     assert_eq!(
-        json!(client().get_study(&study).unwrap()),
+        json!(client().study(&study).unwrap()),
         expected_response(&format!("studies/{}", study))
     );
 }
@@ -265,7 +265,7 @@ fn test_get_study() {
 fn test_get_series() {
     let series = first_series();
     assert_eq!(
-        json!(client().get_series(&series).unwrap()),
+        json!(client().series(&series).unwrap()),
         expected_response(&format!("series/{}", series))
     );
 }
@@ -274,7 +274,7 @@ fn test_get_series() {
 fn test_get_instance() {
     let instance = first_instance();
     assert_eq!(
-        json!(client().get_instance(&instance).unwrap()),
+        json!(client().instance(&instance).unwrap()),
         expected_response(&format!("instances/{}", instance))
     );
 }
@@ -283,7 +283,7 @@ fn test_get_instance() {
 fn test_get_instance_tags() {
     let instance = first_instance();
     assert_eq!(
-        json!(client().get_instance_tags(&instance).unwrap()),
+        json!(client().instance_tags(&instance).unwrap()),
         expected_response(&format!("instances/{}/simplified-tags", instance))
     );
 }
@@ -292,7 +292,7 @@ fn test_get_instance_tags() {
 fn test_get_instance_tags_expanded() {
     let instance = first_instance();
     assert_eq!(
-        json!(client().get_instance_tags_expanded(&instance).unwrap()),
+        json!(client().instance_tags_expanded(&instance).unwrap()),
         expected_response(&format!("instances/{}/tags", instance))
     );
 }
@@ -300,7 +300,7 @@ fn test_get_instance_tags_expanded() {
 #[test]
 fn test_get_patient_dicom() {
     let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
-    let resp = client().get_patient_dicom(&patient.id).unwrap();
+    let resp = client().patient_dicom(&patient.id).unwrap();
 
     let reader = std::io::Cursor::new(resp);
     let zip = zip::ZipArchive::new(reader).unwrap();
@@ -319,7 +319,7 @@ fn test_get_patient_dicom() {
 #[test]
 fn test_get_study_dicom() {
     let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
-    let resp = client().get_study_dicom(&study.id).unwrap();
+    let resp = client().study_dicom(&study.id).unwrap();
 
     let reader = std::io::Cursor::new(resp);
     let zip = zip::ZipArchive::new(reader).unwrap();
@@ -338,7 +338,7 @@ fn test_get_study_dicom() {
 #[test]
 fn test_get_series_dicom() {
     let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
-    let resp = client().get_series_dicom(&series.id).unwrap();
+    let resp = client().series_dicom(&series.id).unwrap();
 
     let reader = std::io::Cursor::new(resp);
     let zip = zip::ZipArchive::new(reader).unwrap();
@@ -354,7 +354,7 @@ fn test_get_series_dicom() {
 #[test]
 fn test_get_intance_dicom() {
     let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
-    let resp = client().get_instance_dicom(&instance.id).unwrap();
+    let resp = client().instance_dicom(&instance.id).unwrap();
 
     let path = "/tmp/instance_dicom";
     let mut file = File::create(path).unwrap();
@@ -365,28 +365,28 @@ fn test_get_intance_dicom() {
 #[test]
 fn test_delete() {
     let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID_DELETE).unwrap();
-    let series = client().get_series(&instance.parent_series).unwrap();
-    let study = client().get_study(&series.parent_study).unwrap();
-    let patient = client().get_patient(&study.parent_patient).unwrap();
+    let series = client().series(&instance.parent_series).unwrap();
+    let study = client().study(&series.parent_study).unwrap();
+    let patient = client().patient(&study.parent_patient).unwrap();
 
     // delete instance
     let resp = client().delete_instance(&instance.id).unwrap();
     assert_eq!(
         resp,
-        RemainingAncestorResponse {
-            remaining_ancestor: Some(RemainingAncestor {
+        RemainingAncestor {
+            remaining_ancestor: Some(Ancestor {
                 id: instance.parent_series,
                 path: format!("/series/{}", series.id),
-                entity_type: EntityType::Series,
+                entity: Entity::Series,
             })
         }
     );
-    let resp = client().get_instance(&instance.id);
+    let resp = client().instance(&instance.id);
     assert_eq!(
         resp.unwrap_err(),
-        OrthancError {
+        Error {
             details: "404".to_string(),
-            error_response: None,
+            api_error: None,
         },
     );
 
@@ -394,20 +394,20 @@ fn test_delete() {
     let resp = client().delete_series(&series.id).unwrap();
     assert_eq!(
         resp,
-        RemainingAncestorResponse {
-            remaining_ancestor: Some(RemainingAncestor {
+        RemainingAncestor {
+            remaining_ancestor: Some(Ancestor {
                 id: series.parent_study,
                 path: format!("/studies/{}", study.id),
-                entity_type: EntityType::Study,
+                entity: Entity::Study,
             })
         }
     );
-    let resp = client().get_series(&series.id);
+    let resp = client().series(&series.id);
     assert_eq!(
         resp.unwrap_err(),
-        OrthancError {
+        Error {
             details: "404".to_string(),
-            error_response: None,
+            api_error: None,
         },
     );
 
@@ -415,20 +415,20 @@ fn test_delete() {
     let resp = client().delete_study(&study.id).unwrap();
     assert_eq!(
         resp,
-        RemainingAncestorResponse {
-            remaining_ancestor: Some(RemainingAncestor {
+        RemainingAncestor {
+            remaining_ancestor: Some(Ancestor {
                 id: study.parent_patient,
                 path: format!("/patients/{}", patient.id),
-                entity_type: EntityType::Patient,
+                entity: Entity::Patient,
             })
         }
     );
-    let resp = client().get_study(&study.id);
+    let resp = client().study(&study.id);
     assert_eq!(
         resp.unwrap_err(),
-        OrthancError {
+        Error {
             details: "404".to_string(),
-            error_response: None,
+            api_error: None,
         },
     );
 
@@ -436,16 +436,16 @@ fn test_delete() {
     let resp = client().delete_patient(&patient.id).unwrap();
     assert_eq!(
         resp,
-        RemainingAncestorResponse {
+        RemainingAncestor {
             remaining_ancestor: None
         }
     );
-    let resp = client().get_patient(&patient.id);
+    let resp = client().patient(&patient.id);
     assert_eq!(
         resp.unwrap_err(),
-        OrthancError {
+        Error {
             details: "404".to_string(),
-            error_response: None,
+            api_error: None,
         },
     );
 }
@@ -459,8 +459,13 @@ fn test_modify_instance() {
         "OperatorsName".to_string() => "Summer Smith".to_string()
     };
     let remove = vec!["SeriesTime".to_string(), "AcquisitionTime".to_string()];
+    let modification = Modification {
+        replace: Some(replace),
+        remove: Some(remove),
+        force: None,
+    };
     let resp = client()
-        .modify_instance(&instance.id, Some(replace), Some(remove))
+        .modify_instance(&instance.id, modification)
         .unwrap();
 
     let path = "/tmp/modified_instance";
@@ -487,10 +492,13 @@ fn test_modify_series() {
         "OperatorsName".to_string() => "Summer Smith".to_string()
     };
     let remove = vec!["StationName".to_string(), "SeriesDate".to_string()];
-    let resp = client()
-        .modify_series(&series.id, Some(replace), Some(remove))
-        .unwrap();
-    let modified_series = client().get_series(&resp.id).unwrap();
+    let modification = Modification {
+        replace: Some(replace),
+        remove: Some(remove),
+        force: None,
+    };
+    let resp = client().modify_series(&series.id, modification).unwrap();
+    let modified_series = client().series(&resp.id).unwrap();
     let modified_tags = modified_series.main_dicom_tags;
 
     assert_eq!(modified_tags["BodyPartExamined"], "PINKY");
@@ -513,10 +521,13 @@ fn test_modify_study() {
         "ReferringPhysicianName".to_string() => "Summer Smith".to_string()
     };
     let remove = vec!["InstitutionName".to_string(), "StudyTime".to_string()];
-    let resp = client()
-        .modify_study(&study.id, Some(replace), Some(remove))
-        .unwrap();
-    let modified_study = client().get_study(&resp.id).unwrap();
+    let modification = Modification {
+        replace: Some(replace),
+        remove: Some(remove),
+        force: None,
+    };
+    let resp = client().modify_study(&study.id, modification).unwrap();
+    let modified_study = client().study(&resp.id).unwrap();
     let modified_tags = modified_study.main_dicom_tags;
 
     assert_eq!(modified_tags["StudyID"], "foobar");
@@ -538,10 +549,13 @@ fn test_modify_patient() {
         "PatientName".to_string() => "Summer Smith".to_string()
     };
     let remove = vec!["PatientSex".to_string()];
-    let resp = client()
-        .modify_patient(&patient.id, Some(replace), Some(remove))
-        .unwrap();
-    let modified_patient = client().get_patient(&resp.id).unwrap();
+    let modification = Modification {
+        replace: Some(replace),
+        remove: Some(remove),
+        force: Some(true),
+    };
+    let resp = client().modify_patient(&patient.id, modification).unwrap();
+    let modified_patient = client().patient(&resp.id).unwrap();
     let modified_tags = modified_patient.main_dicom_tags;
 
     assert_eq!(modified_tags["PatientID"], "42");
@@ -561,8 +575,14 @@ fn test_anonymize_instance() {
         "AccessionNumber".to_string(),
         "StudyDescription".to_string(),
     ];
+    let anonymization = Anonymization {
+        replace: Some(replace),
+        keep: Some(keep),
+        keep_private_tags: None,
+        dicom_version: None,
+    };
     let resp = client()
-        .anonymize_instance(&instance.id, Some(replace), Some(keep), None, None)
+        .anonymize_instance(&instance.id, Some(anonymization))
         .unwrap();
 
     let path = "/tmp/anonymized_instance";
@@ -582,9 +602,7 @@ fn test_anonymize_instance() {
 #[test]
 fn test_anonymize_instance_empty_body() {
     let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
-    let resp = client()
-        .anonymize_instance(&instance.id, None, None, None, None)
-        .unwrap();
+    let resp = client().anonymize_instance(&instance.id, None).unwrap();
 
     let path = "/tmp/anonymized_instance";
     let mut file = File::create(path).unwrap();
@@ -599,7 +617,7 @@ fn test_anonymize_instance_empty_body() {
 #[test]
 fn test_anonymize_series() {
     let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
-    let initial_tags = client().get_instance_tags(&series.instances[0]).unwrap();
+    let initial_tags = client().instance_tags(&series.instances[0]).unwrap();
 
     assert_ne!(initial_tags["SpecificCharacterSet"], "ISO_IR 13");
     assert_ne!(initial_tags["OperatorsName"], "Summer Smith");
@@ -612,14 +630,20 @@ fn test_anonymize_series() {
         "AccessionNumber".to_string(),
         "SeriesDescription".to_string(),
     ];
+    let anonymization = Anonymization {
+        replace: Some(replace),
+        keep: Some(keep),
+        keep_private_tags: None,
+        dicom_version: None,
+    };
     let resp = client()
-        .anonymize_series(&series.id, Some(replace), Some(keep), None, None)
+        .anonymize_series(&series.id, Some(anonymization))
         .unwrap();
 
-    let modified_series = client().get_series(&resp.id).unwrap();
+    let modified_series = client().series(&resp.id).unwrap();
 
     let tags = client()
-        .get_instance_tags(&modified_series.instances[0])
+        .instance_tags(&modified_series.instances[0])
         .unwrap();
 
     assert_eq!(tags["SpecificCharacterSet"], "ISO_IR 13");
@@ -631,19 +655,17 @@ fn test_anonymize_series() {
 #[test]
 fn test_anonymize_series_empty_body() {
     let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
-    let initial_tags = client().get_instance_tags(&series.instances[0]).unwrap();
+    let initial_tags = client().instance_tags(&series.instances[0]).unwrap();
 
     assert_ne!(initial_tags["AccessionNumber"], "");
     assert_ne!(initial_tags["StudyID"], "");
 
-    let resp = client()
-        .anonymize_series(&series.id, None, None, None, None)
-        .unwrap();
+    let resp = client().anonymize_series(&series.id, None).unwrap();
 
-    let modified_series = client().get_series(&resp.id).unwrap();
+    let modified_series = client().series(&resp.id).unwrap();
 
     let tags = client()
-        .get_instance_tags(&modified_series.instances[0])
+        .instance_tags(&modified_series.instances[0])
         .unwrap();
 
     assert_eq!(tags["AccessionNumber"], "");
@@ -653,9 +675,9 @@ fn test_anonymize_series_empty_body() {
 #[test]
 fn test_anonymize_study() {
     let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
-    let initial_series = client().get_series(&study.series[0]).unwrap();
+    let initial_series = client().series(&study.series[0]).unwrap();
     let initial_tags = client()
-        .get_instance_tags(&initial_series.instances[0])
+        .instance_tags(&initial_series.instances[0])
         .unwrap();
 
     assert_ne!(initial_tags["SpecificCharacterSet"], "ISO_IR 13");
@@ -669,14 +691,20 @@ fn test_anonymize_study() {
         "AccessionNumber".to_string(),
         "StudyDescription".to_string(),
     ];
+    let anonymization = Anonymization {
+        replace: Some(replace),
+        keep: Some(keep),
+        keep_private_tags: None,
+        dicom_version: None,
+    };
     let resp = client()
-        .anonymize_study(&study.id, Some(replace), Some(keep), None, None)
+        .anonymize_study(&study.id, Some(anonymization))
         .unwrap();
 
-    let modified_study = client().get_study(&resp.id).unwrap();
-    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let modified_study = client().study(&resp.id).unwrap();
+    let modified_series = client().series(&modified_study.series[0]).unwrap();
     let tags = client()
-        .get_instance_tags(&modified_series.instances[0])
+        .instance_tags(&modified_series.instances[0])
         .unwrap();
 
     assert_eq!(tags["SpecificCharacterSet"], "ISO_IR 13");
@@ -688,22 +716,20 @@ fn test_anonymize_study() {
 #[test]
 fn test_anonymize_study_empty_body() {
     let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
-    let initial_series = client().get_series(&study.series[0]).unwrap();
+    let initial_series = client().series(&study.series[0]).unwrap();
     let initial_tags = client()
-        .get_instance_tags(&initial_series.instances[0])
+        .instance_tags(&initial_series.instances[0])
         .unwrap();
 
     assert_ne!(initial_tags["AccessionNumber"], "");
     assert_ne!(initial_tags["StudyID"], "");
 
-    let resp = client()
-        .anonymize_study(&study.id, None, None, None, None)
-        .unwrap();
+    let resp = client().anonymize_study(&study.id, None).unwrap();
 
-    let modified_study = client().get_study(&resp.id).unwrap();
-    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let modified_study = client().study(&resp.id).unwrap();
+    let modified_series = client().series(&modified_study.series[0]).unwrap();
     let tags = client()
-        .get_instance_tags(&modified_series.instances[0])
+        .instance_tags(&modified_series.instances[0])
         .unwrap();
 
     assert_eq!(tags["AccessionNumber"], "");
@@ -713,10 +739,10 @@ fn test_anonymize_study_empty_body() {
 #[test]
 fn test_anonymize_patient() {
     let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
-    let initial_study = client().get_study(&patient.studies[0]).unwrap();
-    let initial_series = client().get_series(&initial_study.series[0]).unwrap();
+    let initial_study = client().study(&patient.studies[0]).unwrap();
+    let initial_series = client().series(&initial_study.series[0]).unwrap();
     let initial_tags = client()
-        .get_instance_tags(&initial_series.instances[0])
+        .instance_tags(&initial_series.instances[0])
         .unwrap();
 
     assert_ne!(initial_tags["SpecificCharacterSet"], "ISO_IR 13");
@@ -730,15 +756,21 @@ fn test_anonymize_patient() {
         "AccessionNumber".to_string(),
         "StudyDescription".to_string(),
     ];
+    let anonymization = Anonymization {
+        replace: Some(replace),
+        keep: Some(keep),
+        keep_private_tags: None,
+        dicom_version: None,
+    };
     let resp = client()
-        .anonymize_patient(&patient.id, Some(replace), Some(keep), None, None)
+        .anonymize_patient(&patient.id, Some(anonymization))
         .unwrap();
 
-    let modified_patient = client().get_patient(&resp.id).unwrap();
-    let modified_study = client().get_study(&modified_patient.studies[0]).unwrap();
-    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let modified_patient = client().patient(&resp.id).unwrap();
+    let modified_study = client().study(&modified_patient.studies[0]).unwrap();
+    let modified_series = client().series(&modified_study.series[0]).unwrap();
     let tags = client()
-        .get_instance_tags(&modified_series.instances[0])
+        .instance_tags(&modified_series.instances[0])
         .unwrap();
 
     assert_eq!(tags["SpecificCharacterSet"], "ISO_IR 13");
@@ -750,24 +782,22 @@ fn test_anonymize_patient() {
 #[test]
 fn test_anonymize_patient_empty_body() {
     let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
-    let initial_study = client().get_study(&patient.studies[0]).unwrap();
-    let initial_series = client().get_series(&initial_study.series[0]).unwrap();
+    let initial_study = client().study(&patient.studies[0]).unwrap();
+    let initial_series = client().series(&initial_study.series[0]).unwrap();
     let initial_tags = client()
-        .get_instance_tags(&initial_series.instances[0])
+        .instance_tags(&initial_series.instances[0])
         .unwrap();
 
     assert_ne!(initial_tags["AccessionNumber"], "");
     assert_ne!(initial_tags["StudyID"], "");
 
-    let resp = client()
-        .anonymize_patient(&patient.id, None, None, None, None)
-        .unwrap();
+    let resp = client().anonymize_patient(&patient.id, None).unwrap();
 
-    let modified_patient = client().get_patient(&resp.id).unwrap();
-    let modified_study = client().get_study(&modified_patient.studies[0]).unwrap();
-    let modified_series = client().get_series(&modified_study.series[0]).unwrap();
+    let modified_patient = client().patient(&resp.id).unwrap();
+    let modified_study = client().study(&modified_patient.studies[0]).unwrap();
+    let modified_series = client().series(&modified_study.series[0]).unwrap();
     let tags = client()
-        .get_instance_tags(&modified_series.instances[0])
+        .instance_tags(&modified_series.instances[0])
         .unwrap();
 
     assert_eq!(tags["AccessionNumber"], "");
@@ -783,9 +813,9 @@ fn test_upload_dicom() {
     ))
     .unwrap();
 
-    let resp = client().upload_dicom(&data).unwrap();
+    let resp = client().upload(&data).unwrap();
     assert_eq!(resp.status, "Success");
 
-    let resp = client().upload_dicom(&data).unwrap();
+    let resp = client().upload(&data).unwrap();
     assert_eq!(resp.status, "AlreadyStored");
 }

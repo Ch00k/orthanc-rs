@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use chrono::NaiveDateTime;
-use reqwest::blocking::{Client, RequestBuilder};
+use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -8,56 +8,58 @@ use std::fmt;
 use std::result;
 use std::str;
 
-type Result<T> = result::Result<T, OrthancError>;
+type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct OrthancError {
+pub struct Error {
     pub details: String,
     // TODO: This is pretty ugly
-    pub error_response: Option<ErrorResponse>,
+    pub api_error: Option<ApiError>,
 }
 
-impl fmt::Display for OrthancError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {:#?}", self.details, self.error_response)
+        write!(f, "{}: {:#?}", self.details, self.api_error)
     }
 }
 
-impl OrthancError {
-    pub fn new(msg: &str, error_response: Option<ErrorResponse>) -> OrthancError {
-        OrthancError {
+impl Error {
+    fn new(msg: &str, api_error: Option<ApiError>) -> Error {
+        Error {
             details: msg.to_string(),
-            error_response,
+            api_error,
         }
     }
 }
 
-impl From<reqwest::Error> for OrthancError {
+impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
-        OrthancError::new(&e.to_string(), None)
+        Error::new(&e.to_string(), None)
     }
 }
 
-impl From<serde_json::error::Error> for OrthancError {
+impl From<serde_json::error::Error> for Error {
     fn from(e: serde_json::error::Error) -> Self {
-        OrthancError::new(&e.to_string(), None)
+        Error::new(&e.to_string(), None)
     }
 }
 
-impl From<str::Utf8Error> for OrthancError {
+impl From<str::Utf8Error> for Error {
     fn from(e: str::Utf8Error) -> Self {
-        OrthancError::new(&e.to_string(), None)
+        Error::new(&e.to_string(), None)
     }
 }
 
+/// Orthanc entity types
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-pub enum EntityType {
+pub enum Entity {
     Patient,
     Study,
     Series,
     Instance,
 }
 
+/// Modality
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Modality {
@@ -87,7 +89,7 @@ pub struct Patient {
     pub main_dicom_tags: HashMap<String, String>,
     pub studies: Vec<String>,
     #[serde(rename = "Type")]
-    pub entity_type: EntityType,
+    pub entity: Entity,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymized_from: Option<String>,
 }
@@ -105,7 +107,7 @@ pub struct Study {
     pub patient_main_dicom_tags: HashMap<String, String>,
     pub series: Vec<String>,
     #[serde(rename = "Type")]
-    pub entity_type: EntityType,
+    pub entity: Entity,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymized_from: Option<String>,
 }
@@ -124,7 +126,7 @@ pub struct Series {
     pub expected_number_of_instances: Option<u32>,
     pub instances: Vec<String>,
     #[serde(rename = "Type")]
-    pub entity_type: EntityType,
+    pub entity: Entity,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymized_from: Option<String>,
 }
@@ -142,7 +144,7 @@ pub struct Instance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified_from: Option<String>,
     #[serde(rename = "Type")]
-    pub entity_type: EntityType,
+    pub entity: Entity,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymized_from: Option<String>,
 }
@@ -151,39 +153,39 @@ pub struct Instance {
 #[serde(rename_all = "PascalCase")]
 pub struct Anonymization {
     #[serde(skip_serializing_if = "Option::is_none")]
-    replace: Option<HashMap<String, String>>,
+    pub replace: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    keep: Option<Vec<String>>,
+    pub keep: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    keep_private_tags: Option<bool>,
+    pub keep_private_tags: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    dicom_version: Option<String>,
+    pub dicom_version: Option<String>,
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Modification {
     #[serde(skip_serializing_if = "Option::is_none")]
-    replace: Option<HashMap<String, String>>,
+    pub replace: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    remove: Option<Vec<String>>,
+    pub remove: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    force: Option<bool>,
+    pub force: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct RemainingAncestor {
+pub struct Ancestor {
     #[serde(rename = "ID")]
     pub id: String,
     pub path: String,
     #[serde(rename = "Type")]
-    pub entity_type: EntityType,
+    pub entity: Entity,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct UploadResponse {
+pub struct UploadResult {
     #[serde(rename = "ID")]
     pub id: String,
     pub status: String,
@@ -195,7 +197,7 @@ pub struct UploadResponse {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct StoreResponse {
+pub struct StoreResult {
     description: String,
     local_aet: String,
     remote_aet: String,
@@ -206,7 +208,7 @@ pub struct StoreResponse {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct ErrorResponse {
+pub struct ApiError {
     pub method: String,
     pub uri: String,
     pub message: String,
@@ -219,44 +221,44 @@ pub struct ErrorResponse {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct ModificationResponse {
+pub struct ModificationResult {
     #[serde(rename = "ID")]
     pub id: String,
     #[serde(rename = "PatientID")]
     pub patient_id: String,
     pub path: String,
     #[serde(rename = "Type")]
-    pub entity_type: EntityType,
+    pub entity: Entity,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct RemainingAncestorResponse {
-    pub remaining_ancestor: Option<RemainingAncestor>,
+pub struct RemainingAncestor {
+    pub remaining_ancestor: Option<Ancestor>,
 }
 
-pub struct OrthancClient {
-    server_address: String,
+pub struct Client {
+    server: String,
     username: Option<String>,
     password: Option<String>,
-    client: Client,
+    client: reqwest::blocking::Client,
 }
 
-impl OrthancClient {
-    pub fn new(
-        server_address: &str,
-        username: Option<&str>,
-        password: Option<&str>,
-    ) -> OrthancClient {
-        OrthancClient {
-            server_address: server_address.to_string(),
+impl Client {
+    /// Create a new client.
+    pub fn new(server: &str, username: Option<&str>, password: Option<&str>) -> Client {
+        Client {
+            server: server.to_string(),
             username: username.map(|u| u.to_string()),
             password: password.map(|p| p.to_string()),
-            client: Client::new(),
+            client: reqwest::blocking::Client::new(),
         }
     }
 
-    fn add_auth(&self, request: RequestBuilder) -> RequestBuilder {
+    fn add_auth(
+        &self,
+        request: reqwest::blocking::RequestBuilder,
+    ) -> reqwest::blocking::RequestBuilder {
         match (&self.username, &self.password) {
             (Some(u), Some(p)) => request.basic_auth(u, Some(p)),
             _ => request,
@@ -264,7 +266,7 @@ impl OrthancClient {
     }
 
     fn get(&self, path: &str) -> Result<String> {
-        let url = format!("{}/{}", self.server_address, &path);
+        let url = format!("{}/{}", self.server, &path);
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
@@ -278,7 +280,7 @@ impl OrthancClient {
     }
 
     fn get_bytes(&self, path: &str) -> Result<Bytes> {
-        let url = format!("{}/{}", self.server_address, &path);
+        let url = format!("{}/{}", self.server, &path);
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
@@ -298,7 +300,7 @@ impl OrthancClient {
 
     // TODO: Can I make one function out of these two?
     fn post(&self, path: &str, data: Value) -> Result<String> {
-        let url = format!("{}/{}", self.server_address, path);
+        let url = format!("{}/{}", self.server, path);
         let mut request = self.client.post(&url).json(&data);
         request = self.add_auth(request);
         let resp = request.send()?;
@@ -312,7 +314,7 @@ impl OrthancClient {
     }
 
     fn post_receive_bytes(&self, path: &str, data: Value) -> Result<Bytes> {
-        let url = format!("{}/{}", self.server_address, path);
+        let url = format!("{}/{}", self.server, path);
         let mut request = self.client.post(&url).json(&data);
         request = self.add_auth(request);
         let resp = request.send()?;
@@ -327,7 +329,7 @@ impl OrthancClient {
     }
 
     fn post_bytes(&self, path: &str, data: &[u8]) -> Result<String> {
-        let url = format!("{}/{}", self.server_address, path);
+        let url = format!("{}/{}", self.server, path);
         // TODO: .to_vec() here is probably not a good idea
         let mut request = self.client.post(&url).body(data.to_vec());
         request = self.add_auth(request);
@@ -342,7 +344,7 @@ impl OrthancClient {
     }
 
     fn delete(&self, path: &str) -> Result<String> {
-        let url = format!("{}/{}", self.server_address, &path);
+        let url = format!("{}/{}", self.server, &path);
         let mut request = self.client.delete(&url);
         request = self.add_auth(request);
         let resp = request.send()?;
@@ -361,133 +363,135 @@ impl OrthancClient {
         Ok(json)
     }
 
-    pub fn list_modalities(&self) -> Result<Vec<String>> {
+    /// List modalities
+    pub fn modalities(&self) -> Result<Vec<String>> {
         self.list("modalities")
     }
 
-    pub fn list_patients(&self) -> Result<Vec<String>> {
+    /// List patients
+    pub fn patients(&self) -> Result<Vec<String>> {
         self.list("patients")
     }
 
-    pub fn list_studies(&self) -> Result<Vec<String>> {
+    pub fn studies(&self) -> Result<Vec<String>> {
         self.list("studies")
     }
 
-    pub fn list_series(&self) -> Result<Vec<String>> {
+    pub fn series_list(&self) -> Result<Vec<String>> {
         self.list("series")
     }
 
-    pub fn list_instances(&self) -> Result<Vec<String>> {
+    pub fn instances(&self) -> Result<Vec<String>> {
         self.list("instances")
     }
 
-    pub fn list_modalities_expanded(&self) -> Result<HashMap<String, Modality>> {
+    pub fn modalities_expanded(&self) -> Result<HashMap<String, Modality>> {
         let resp = self.get("modalities?expand")?;
         let json: HashMap<String, Modality> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_patients_expanded(&self) -> Result<Vec<Patient>> {
+    pub fn patients_expanded(&self) -> Result<Vec<Patient>> {
         let resp = self.get("patients?expand")?;
         let json: Vec<Patient> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_studies_expanded(&self) -> Result<Vec<Study>> {
+    pub fn studies_expanded(&self) -> Result<Vec<Study>> {
         let resp = self.get("studies?expand")?;
         let json: Vec<Study> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_series_expanded(&self) -> Result<Vec<Series>> {
+    pub fn series_expanded(&self) -> Result<Vec<Series>> {
         let resp = self.get("series?expand")?;
         let json: Vec<Series> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn list_instances_expanded(&self) -> Result<Vec<Instance>> {
+    pub fn instances_expanded(&self) -> Result<Vec<Instance>> {
         let resp = self.get("instances?expand")?;
         let json: Vec<Instance> = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_patient(&self, id: &str) -> Result<Patient> {
+    pub fn patient(&self, id: &str) -> Result<Patient> {
         let resp = self.get(&format!("patients/{}", id))?;
         let json: Patient = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_study(&self, id: &str) -> Result<Study> {
+    pub fn study(&self, id: &str) -> Result<Study> {
         let resp = self.get(&format!("studies/{}", id))?;
         let json: Study = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_series(&self, id: &str) -> Result<Series> {
+    pub fn series(&self, id: &str) -> Result<Series> {
         let resp = self.get(&format!("series/{}", id))?;
         let json: Series = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_instance(&self, id: &str) -> Result<Instance> {
+    pub fn instance(&self, id: &str) -> Result<Instance> {
         let resp = self.get(&format!("instances/{}", id))?;
         let json: Instance = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_instance_tags(&self, id: &str) -> Result<Value> {
+    pub fn instance_tags(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/simplified-tags", id))?;
         let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_instance_tags_expanded(&self, id: &str) -> Result<Value> {
+    pub fn instance_tags_expanded(&self, id: &str) -> Result<Value> {
         let resp = self.get(&format!("instances/{}/tags", id))?;
         let json: Value = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn get_patient_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn patient_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("patients/{}/archive", id);
         self.get_bytes(&path)
     }
 
-    pub fn get_study_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn study_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("studies/{}/archive", id);
         self.get_bytes(&path)
     }
 
-    pub fn get_series_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn series_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("series/{}/archive", id);
         self.get_bytes(&path)
     }
 
-    pub fn get_instance_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn instance_dicom(&self, id: &str) -> Result<Bytes> {
         let path = format!("instances/{}/file", id);
         self.get_bytes(&path)
     }
 
-    pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestorResponse> {
+    pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("patients/{}", id))?;
-        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_study(&self, id: &str) -> Result<RemainingAncestorResponse> {
+    pub fn delete_study(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("studies/{}", id))?;
-        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_series(&self, id: &str) -> Result<RemainingAncestorResponse> {
+    pub fn delete_series(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("series/{}", id))?;
-        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
-    pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestorResponse> {
+    pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("instances/{}", id))?;
-        let json: RemainingAncestorResponse = serde_json::from_str(&resp)?;
+        let json: RemainingAncestor = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -504,12 +508,12 @@ impl OrthancClient {
         .map(|_| ())
     }
 
-    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResponse> {
+    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResult> {
         let resp = self.post(
             &format!("modalities/{}/store", modality),
             serde_json::json!(ids),
         )?;
-        let json: StoreResponse = serde_json::from_str(&resp)?;
+        let json: StoreResult = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -517,22 +521,23 @@ impl OrthancClient {
         &self,
         entity: &str,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        keep: Option<Vec<String>>,
-        keep_private_tags: Option<bool>,
-        dicom_version: Option<String>,
-    ) -> Result<ModificationResponse> {
-        let data = Anonymization {
-            replace,
-            keep,
-            keep_private_tags,
-            dicom_version,
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        let data = match anonymization {
+            Some(a) => a,
+            // TODO: Just pass an empty object?
+            None => Anonymization {
+                replace: None,
+                keep: None,
+                keep_private_tags: None,
+                dicom_version: None,
+            },
         };
         let resp = self.post(
             &format!("{}/{}/anonymize", entity, id),
             serde_json::to_value(data)?,
         )?;
-        let json: ModificationResponse = serde_json::from_str(&resp)?;
+        let json: ModificationResult = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
@@ -540,90 +545,54 @@ impl OrthancClient {
         &self,
         entity: &str,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        remove: Option<Vec<String>>,
-        force: Option<bool>,
-    ) -> Result<ModificationResponse> {
-        let data = Modification {
-            replace,
-            remove,
-            force,
-        };
+        modification: Modification,
+    ) -> Result<ModificationResult> {
         let resp = self.post(
             &format!("{}/{}/modify", entity, id),
-            serde_json::to_value(data)?,
+            serde_json::to_value(modification)?,
         )?;
-        let json: ModificationResponse = serde_json::from_str(&resp)?;
+        let json: ModificationResult = serde_json::from_str(&resp)?;
         Ok(json)
     }
 
     pub fn anonymize_patient(
         &self,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        keep: Option<Vec<String>>,
-        keep_private_tags: Option<bool>,
-        dicom_version: Option<String>,
-    ) -> Result<ModificationResponse> {
-        self.anonymize(
-            "patients",
-            id,
-            replace,
-            keep,
-            keep_private_tags,
-            dicom_version,
-        )
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        self.anonymize("patients", id, anonymization)
     }
 
     pub fn anonymize_study(
         &self,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        keep: Option<Vec<String>>,
-        keep_private_tags: Option<bool>,
-        dicom_version: Option<String>,
-    ) -> Result<ModificationResponse> {
-        self.anonymize(
-            "studies",
-            id,
-            replace,
-            keep,
-            keep_private_tags,
-            dicom_version,
-        )
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        self.anonymize("studies", id, anonymization)
     }
 
     pub fn anonymize_series(
         &self,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        keep: Option<Vec<String>>,
-        keep_private_tags: Option<bool>,
-        dicom_version: Option<String>,
-    ) -> Result<ModificationResponse> {
-        self.anonymize(
-            "series",
-            id,
-            replace,
-            keep,
-            keep_private_tags,
-            dicom_version,
-        )
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        self.anonymize("series", id, anonymization)
     }
 
     pub fn anonymize_instance(
         &self,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        keep: Option<Vec<String>>,
-        keep_private_tags: Option<bool>,
-        dicom_version: Option<String>,
+        anonymization: Option<Anonymization>,
     ) -> Result<Bytes> {
-        let data = Anonymization {
-            replace,
-            keep,
-            keep_private_tags,
-            dicom_version,
+        let data = match anonymization {
+            Some(a) => a,
+            // TODO: Just pass an empty object?
+            None => Anonymization {
+                replace: None,
+                keep: None,
+                keep_private_tags: None,
+                dicom_version: None,
+            },
         };
         let resp = self.post_receive_bytes(
             &format!("instances/{}/anonymize", id),
@@ -635,51 +604,38 @@ impl OrthancClient {
     pub fn modify_patient(
         &self,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        remove: Option<Vec<String>>,
-    ) -> Result<ModificationResponse> {
-        self.modify("patients", id, replace, remove, Some(true))
+        modification: Modification,
+    ) -> Result<ModificationResult> {
+        self.modify("patients", id, modification)
     }
 
     pub fn modify_study(
         &self,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        remove: Option<Vec<String>>,
-    ) -> Result<ModificationResponse> {
-        self.modify("studies", id, replace, remove, None)
+        modification: Modification,
+    ) -> Result<ModificationResult> {
+        self.modify("studies", id, modification)
     }
 
     pub fn modify_series(
         &self,
         id: &str,
-        replace: Option<HashMap<String, String>>,
-        remove: Option<Vec<String>>,
-    ) -> Result<ModificationResponse> {
-        self.modify("series", id, replace, remove, None)
+        modification: Modification,
+    ) -> Result<ModificationResult> {
+        self.modify("series", id, modification)
     }
 
-    pub fn modify_instance(
-        &self,
-        id: &str,
-        replace: Option<HashMap<String, String>>,
-        remove: Option<Vec<String>>,
-    ) -> Result<Bytes> {
-        let data = Modification {
-            replace,
-            remove,
-            force: None,
-        };
+    pub fn modify_instance(&self, id: &str, modification: Modification) -> Result<Bytes> {
         let resp = self.post_receive_bytes(
             &format!("instances/{}/modify", id),
-            serde_json::to_value(data)?,
+            serde_json::to_value(modification)?,
         )?;
         Ok(resp)
     }
 
-    pub fn upload_dicom(&self, data: &[u8]) -> Result<UploadResponse> {
+    pub fn upload(&self, data: &[u8]) -> Result<UploadResult> {
         let resp = self.post_bytes("instances", data)?;
-        let json: UploadResponse = serde_json::from_str(&resp)?;
+        let json: UploadResult = serde_json::from_str(&resp)?;
         Ok(json)
     }
 }
@@ -690,9 +646,9 @@ fn check_http_error(
 ) -> Result<()> {
     if response_status >= reqwest::StatusCode::BAD_REQUEST {
         if response_body.is_empty() {
-            return Err(OrthancError::new(response_status.as_str(), None));
+            return Err(Error::new(response_status.as_str(), None));
         };
-        return Err(OrthancError::new(
+        return Err(Error::new(
             response_status.as_str(),
             serde_json::from_str(response_body)?,
         ));
@@ -732,9 +688,9 @@ mod tests {
 
     #[test]
     fn test_error_formatting() {
-        let error = OrthancError {
+        let error = Error {
             details: "400".to_string(),
-            error_response: Some(ErrorResponse {
+            api_error: Some(ApiError {
                 method: "POST".to_string(),
                 uri: "/instances".to_string(),
                 message: "Bad file format".to_string(),
@@ -750,7 +706,7 @@ mod tests {
 
         // TODO: Any way to make the formatting nicer?
         let expected_error_str = r#"400: Some(
-    ErrorResponse {
+    ApiError {
         method: "POST",
         uri: "/instances",
         message: "Bad file format",
@@ -779,21 +735,21 @@ mod tests {
             .return_body("foo")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.list_patients();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.patients();
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "expected ident at line 1 column 2".to_string(),
-                error_response: None,
+                api_error: None,
             },
         )
     }
 
     #[test]
     fn test_error_from_reqwest() {
-        let cl = OrthancClient::new("http://foo", Some("foo"), Some("bar"));
-        let resp = cl.list_patients();
+        let cl = Client::new("http://foo", Some("foo"), Some("bar"));
+        let resp = cl.patients();
 
         let expected_err = concat!(
             r#"error sending request for url (http://foo/patients): "#,
@@ -803,9 +759,9 @@ mod tests {
         );
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: expected_err.to_string(),
-                error_response: None,
+                api_error: None,
             },
         );
     }
@@ -814,27 +770,27 @@ mod tests {
     fn test_error_from_utf8() {
         let sparkle_heart = vec![0, 159, 146, 150];
         let utf8_error = str::from_utf8(&sparkle_heart).unwrap_err();
-        let orthanc_error = OrthancError::from(utf8_error);
+        let orthanc_error = Error::from(utf8_error);
         assert_eq!(
             orthanc_error,
-            OrthancError {
+            Error {
                 details: "invalid utf-8 sequence of 1 bytes from index 1".to_string(),
-                error_response: None,
+                api_error: None,
             }
         );
     }
 
     #[test]
     fn test_default_fields() {
-        let cl = OrthancClient::new("http://localhost:8042", None, None);
-        assert_eq!(cl.server_address, "http://localhost:8042");
+        let cl = Client::new("http://localhost:8042", None, None);
+        assert_eq!(cl.server, "http://localhost:8042");
         assert_eq!(cl.username, None);
         assert_eq!(cl.password, None);
     }
 
     #[test]
     fn test_auth() {
-        let cl = OrthancClient::new("http://localhost:8042", Some("foo"), Some("bar"));
+        let cl = Client::new("http://localhost:8042", Some("foo"), Some("bar"));
         assert_eq!(cl.username, Some("foo".to_string()));
         assert_eq!(cl.password, Some("bar".to_string()));
     }
@@ -852,7 +808,7 @@ mod tests {
             .return_body("bar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get("foo").unwrap();
 
         assert_eq!(resp, "bar");
@@ -872,7 +828,7 @@ mod tests {
             .return_body("bar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get_bytes("foo").unwrap();
 
         assert_eq!(resp, "bar");
@@ -894,7 +850,7 @@ mod tests {
             .return_body("baz")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.post("foo", serde_json::json!("bar")).unwrap();
 
         assert_eq!(resp, "baz");
@@ -916,7 +872,7 @@ mod tests {
             .return_body("baz")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.post_bytes("foo", "bar".as_bytes()).unwrap();
 
         assert_eq!(resp, "baz");
@@ -935,7 +891,7 @@ mod tests {
             .return_status(200)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.delete("foo").unwrap();
 
         assert_eq!(resp, "");
@@ -967,14 +923,14 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get("foo");
 
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "400".to_string(),
-                error_response: Some(ErrorResponse {
+                api_error: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1016,14 +972,14 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get_bytes("foo");
 
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "400".to_string(),
-                error_response: Some(ErrorResponse {
+                api_error: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1065,14 +1021,14 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.post("foo", serde_json::json!("bar"));
 
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "400".to_string(),
-                error_response: Some(ErrorResponse {
+                api_error: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1114,14 +1070,14 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.post_receive_bytes("foo", serde_json::json!("bar"));
 
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "400".to_string(),
-                error_response: Some(ErrorResponse {
+                api_error: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1163,14 +1119,14 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.post_bytes("foo", &[13, 42, 17]);
 
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "400".to_string(),
-                error_response: Some(ErrorResponse {
+                api_error: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1212,14 +1168,14 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.delete("foo");
 
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "400".to_string(),
-                error_response: Some(ErrorResponse {
+                api_error: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1247,15 +1203,15 @@ mod tests {
             .return_status(404)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(&url, Some("foo"), Some("bar"));
         let resp = cl.get("foo");
 
         assert!(resp.is_err());
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "404".to_string(),
-                error_response: None,
+                api_error: None,
             },
         );
         assert_eq!(m.times_called(), 1);
@@ -1274,8 +1230,8 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let modalities = cl.list_modalities().unwrap();
+        let cl = Client::new(&url, None, None);
+        let modalities = cl.modalities().unwrap();
 
         assert_eq!(modalities, ["foo", "bar", "baz"]);
         assert_eq!(m.times_called(), 1);
@@ -1294,8 +1250,8 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let patient_ids = cl.list_patients().unwrap();
+        let cl = Client::new(&url, None, None);
+        let patient_ids = cl.patients().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
         assert_eq!(m.times_called(), 1);
@@ -1314,8 +1270,8 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let patient_ids = cl.list_studies().unwrap();
+        let cl = Client::new(&url, None, None);
+        let patient_ids = cl.studies().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
         assert_eq!(m.times_called(), 1);
@@ -1334,8 +1290,8 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let patient_ids = cl.list_series().unwrap();
+        let cl = Client::new(&url, None, None);
+        let patient_ids = cl.series_list().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
         assert_eq!(m.times_called(), 1);
@@ -1354,8 +1310,8 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let patient_ids = cl.list_instances().unwrap();
+        let cl = Client::new(&url, None, None);
+        let patient_ids = cl.instances().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
         assert_eq!(m.times_called(), 1);
@@ -1408,8 +1364,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let modalities = cl.list_modalities_expanded().unwrap();
+        let cl = Client::new(&url, None, None);
+        let modalities = cl.modalities_expanded().unwrap();
 
         assert_eq!(
             modalities,
@@ -1497,8 +1453,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let patients = cl.list_patients_expanded().unwrap();
+        let cl = Client::new(&url, None, None);
+        let patients = cl.patients_expanded().unwrap();
 
         assert_eq!(
             patients,
@@ -1516,7 +1472,7 @@ mod tests {
                     },
                     studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()]
                         .to_vec(),
-                    entity_type: EntityType::Patient,
+                    entity: Entity::Patient,
                     anonymized_from: None
                 },
                 Patient {
@@ -1531,7 +1487,7 @@ mod tests {
                     },
                     studies: ["63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string()]
                         .to_vec(),
-                    entity_type: EntityType::Patient,
+                    entity: Entity::Patient,
                     anonymized_from: None
                 },
             ]
@@ -1608,8 +1564,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let studies = cl.list_studies_expanded().unwrap();
+        let cl = Client::new(&url, None, None);
+        let studies = cl.studies_expanded().unwrap();
 
         assert_eq!(
             studies,
@@ -1639,7 +1595,7 @@ mod tests {
                         "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string()
                     ]
                     .to_vec(),
-                    entity_type: EntityType::Study,
+                    entity: Entity::Study,
                     anonymized_from: None
                 },
                 Study {
@@ -1667,7 +1623,7 @@ mod tests {
                         "54f8778a-75ba559c-db7c7c1a-c1056140-ef74d487".to_string()
                     ]
                     .to_vec(),
-                    entity_type: EntityType::Study,
+                    entity: Entity::Study,
                     anonymized_from: None
                 },
             ]
@@ -1739,8 +1695,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let series = cl.list_series_expanded().unwrap();
+        let cl = Client::new(&url, None, None);
+        let series = cl.series_expanded().unwrap();
 
         assert_eq!(
             series,
@@ -1769,7 +1725,7 @@ mod tests {
                         "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788".to_string(),
                     ]
                     .to_vec(),
-                    entity_type: EntityType::Series,
+                    entity: Entity::Series,
                     anonymized_from: None
                 },
                 Series {
@@ -1795,7 +1751,7 @@ mod tests {
                         "1c81e7e8-30642777-ffc2ca41-c7536670-7ad68124".to_string(),
                     ]
                     .to_vec(),
-                    entity_type: EntityType::Series,
+                    entity: Entity::Series,
                     anonymized_from: None
                 },
             ]
@@ -1855,8 +1811,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let instances = cl.list_instances_expanded().unwrap();
+        let cl = Client::new(&url, None, None);
+        let instances = cl.instances_expanded().unwrap();
 
         assert_eq!(
             instances,
@@ -1879,7 +1835,7 @@ mod tests {
                     modified_from: Some(
                         "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()
                     ),
-                    entity_type: EntityType::Instance,
+                    entity: Entity::Instance,
                     anonymized_from: None
                 },
                 Instance {
@@ -1898,7 +1854,7 @@ mod tests {
                     file_uuid: "86bbad65-2c98-4cb0-bf77-0ef0243410a4".to_string(),
                     file_size: 381642,
                     modified_from: None,
-                    entity_type: EntityType::Instance,
+                    entity: Entity::Instance,
                     anonymized_from: None
                 },
             ]
@@ -1938,8 +1894,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let patient = cl.get_patient("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let patient = cl.patient("foo").unwrap();
 
         assert_eq!(
             patient,
@@ -1956,7 +1912,7 @@ mod tests {
                 },
                 studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()]
                     .to_vec(),
-                entity_type: EntityType::Patient,
+                entity: Entity::Patient,
                 anonymized_from: None
             },
         );
@@ -2004,8 +1960,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let study = cl.get_study("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let study = cl.study("foo").unwrap();
 
         assert_eq!(
             study,
@@ -2033,7 +1989,7 @@ mod tests {
                     "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string()
                 ]
                 .to_vec(),
-                entity_type: EntityType::Study,
+                entity: Entity::Study,
                 anonymized_from: None
             },
         );
@@ -2073,8 +2029,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let instance = cl.get_instance("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let instance = cl.instance("foo").unwrap();
 
         assert_eq!(
             instance,
@@ -2095,7 +2051,7 @@ mod tests {
                 modified_from: Some(
                     "22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()
                 ),
-                entity_type: EntityType::Instance,
+                entity: Entity::Instance,
                 anonymized_from: None
             }
         );
@@ -2141,8 +2097,8 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let series = cl.get_series("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let series = cl.series("foo").unwrap();
 
         assert_eq!(
             series,
@@ -2169,7 +2125,7 @@ mod tests {
                     "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788".to_string(),
                 ]
                 .to_vec(),
-                entity_type: EntityType::Series,
+                entity: Entity::Series,
                 anonymized_from: None
             },
         );
@@ -2202,8 +2158,8 @@ mod tests {
             .return_body(body)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.get_instance_tags("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.instance_tags("foo").unwrap();
 
         let expected_resp: Value = serde_json::from_str(body).unwrap();
         assert_eq!(resp, expected_resp);
@@ -2255,8 +2211,8 @@ mod tests {
             .return_body(body)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.get_instance_tags_expanded("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.instance_tags_expanded("foo").unwrap();
 
         let expected_resp: Value = serde_json::from_str(body).unwrap();
         assert_eq!(resp, expected_resp);
@@ -2276,8 +2232,8 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.get_patient_dicom("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.patient_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
         assert_eq!(m.times_called(), 1);
@@ -2296,8 +2252,8 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.get_study_dicom("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.study_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
         assert_eq!(m.times_called(), 1);
@@ -2316,8 +2272,8 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.get_series_dicom("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.series_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
         assert_eq!(m.times_called(), 1);
@@ -2336,8 +2292,8 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.get_instance_dicom("foo").unwrap();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.instance_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
         assert_eq!(m.times_called(), 1);
@@ -2368,12 +2324,12 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.store("them", &["bar", "baz", "qux"]).unwrap();
 
         assert_eq!(
             resp,
-            StoreResponse {
+            StoreResult {
                 description: "REST API".to_string(),
                 local_aet: "US".to_string(),
                 remote_aet: "THEM".to_string(),
@@ -2415,24 +2371,26 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .modify(
                 "studies",
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string()]),
-                None,
+                Modification {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    remove: Some(vec!["Tag2".to_string()]),
+                    force: None,
+                },
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Study
+                entity: Entity::Study
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2465,25 +2423,27 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .anonymize(
                 "studies",
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                None,
-                None,
+                Some(Anonymization {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                    keep_private_tags: None,
+                    dicom_version: None,
+                }),
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Study,
+                entity: Entity::Study,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2515,22 +2475,25 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .modify_patient(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string()]),
+                Modification {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    remove: Some(vec!["Tag2".to_string()]),
+                    force: Some(true),
+                },
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Patient,
+                entity: Entity::Patient,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2562,22 +2525,25 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .modify_study(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string()]),
+                Modification {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    remove: Some(vec!["Tag2".to_string()]),
+                    force: None,
+                },
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Study,
+                entity: Entity::Study,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2609,22 +2575,25 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .modify_series(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string()]),
+                Modification {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    remove: Some(vec!["Tag2".to_string()]),
+                    force: None,
+                },
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Series,
+                entity: Entity::Series,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2647,12 +2616,15 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .modify_instance(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string()]),
+                Modification {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    remove: Some(vec!["Tag2".to_string()]),
+                    force: None,
+                },
             )
             .unwrap();
 
@@ -2687,24 +2659,26 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .anonymize_patient(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                None,
-                None,
+                Some(Anonymization {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                    keep_private_tags: None,
+                    dicom_version: None,
+                }),
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/patients/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Patient,
+                entity: Entity::Patient,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2737,24 +2711,26 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .anonymize_study(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                Some(true),
-                None,
+                Some(Anonymization {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                    keep_private_tags: Some(true),
+                    dicom_version: None,
+                }),
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/studies/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Study,
+                entity: Entity::Study,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2787,24 +2763,26 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .anonymize_series(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                Some(false),
-                None,
+                Some(Anonymization {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                    keep_private_tags: Some(false),
+                    dicom_version: None,
+                }),
             )
             .unwrap();
 
         assert_eq!(
             resp,
-            ModificationResponse {
+            ModificationResult {
                 id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 patient_id: "86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
                 path: "/series/86a3054b-32bb888a-e5f42e28-4b2e82d2-b1d7e14c".to_string(),
-                entity_type: EntityType::Series,
+                entity: Entity::Series,
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -2828,14 +2806,16 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl
             .anonymize_instance(
                 "foo",
-                Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                None,
-                None,
+                Some(Anonymization {
+                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                    keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                    keep_private_tags: None,
+                    dicom_version: None,
+                }),
             )
             .unwrap();
 
@@ -2855,12 +2835,12 @@ mod tests {
             .return_body(r#"{"RemainingAncestor": null}"#)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.delete_patient("foo").unwrap();
 
         assert_eq!(
             resp,
-            RemainingAncestorResponse {
+            RemainingAncestor {
                 remaining_ancestor: None
             }
         );
@@ -2889,16 +2869,16 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.delete_study("foo").unwrap();
 
         assert_eq!(
             resp,
-            RemainingAncestorResponse {
-                remaining_ancestor: Some(RemainingAncestor {
+            RemainingAncestor {
+                remaining_ancestor: Some(Ancestor {
                     id: "bar".to_string(),
                     path: "/patients/bar".to_string(),
-                    entity_type: EntityType::Patient,
+                    entity: Entity::Patient,
                 })
             }
         );
@@ -2927,16 +2907,16 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.delete_series("foo").unwrap();
 
         assert_eq!(
             resp,
-            RemainingAncestorResponse {
-                remaining_ancestor: Some(RemainingAncestor {
+            RemainingAncestor {
+                remaining_ancestor: Some(Ancestor {
                     id: "bar".to_string(),
                     path: "/studies/bar".to_string(),
-                    entity_type: EntityType::Study,
+                    entity: Entity::Study,
                 })
             }
         );
@@ -2965,16 +2945,16 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.delete_instance("foo").unwrap();
 
         assert_eq!(
             resp,
-            RemainingAncestorResponse {
-                remaining_ancestor: Some(RemainingAncestor {
+            RemainingAncestor {
+                remaining_ancestor: Some(Ancestor {
                     id: "bar".to_string(),
                     path: "/series/bar".to_string(),
-                    entity_type: EntityType::Series,
+                    entity: Entity::Series,
                 })
             }
         );
@@ -2993,7 +2973,7 @@ mod tests {
             .return_body("{}")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.echo("foo", None).unwrap();
 
         assert_eq!(resp, ());
@@ -3013,7 +2993,7 @@ mod tests {
             .return_body("{}")
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.echo("foo", Some(42)).unwrap();
 
         assert_eq!(resp, ());
@@ -3031,14 +3011,14 @@ mod tests {
             .return_status(500)
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
+        let cl = Client::new(&url, None, None);
         let resp = cl.echo("foo", None);
 
         assert_eq!(
             resp.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "500".to_string(),
-                error_response: None
+                api_error: None
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -3068,12 +3048,12 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = OrthancClient::new(&url, None, None);
-        let resp = cl.upload_dicom("quux".as_bytes()).unwrap();
+        let cl = Client::new(&url, None, None);
+        let resp = cl.upload("quux".as_bytes()).unwrap();
 
         assert_eq!(
             resp,
-            UploadResponse {
+            UploadResult {
                 id: "foo".to_string(),
                 status: "Success".to_string(),
                 path: "/instances/foo".to_string(),
@@ -3110,9 +3090,9 @@ mod tests {
         );
         assert_eq!(
             res.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "400".to_string(),
-                error_response: Some(ErrorResponse {
+                api_error: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -3133,9 +3113,9 @@ mod tests {
         let res = check_http_error(reqwest::StatusCode::UNAUTHORIZED, "");
         assert_eq!(
             res.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "401".to_string(),
-                error_response: None
+                api_error: None
             },
         );
     }
@@ -3146,9 +3126,9 @@ mod tests {
         let res = check_http_error(reqwest::StatusCode::GATEWAY_TIMEOUT, "foo bar baz");
         assert_eq!(
             res.unwrap_err(),
-            OrthancError {
+            Error {
                 details: "expected ident at line 1 column 2".to_string(),
-                error_response: None
+                api_error: None
             },
         );
     }
