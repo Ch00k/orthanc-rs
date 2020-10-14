@@ -22,24 +22,11 @@ const DCMDUMP_LINE_PATTERN: &str = r"\s*\(\d{4},\d{4}\)\s+[A-Z]{2}\s+([\[\(].*[\
 const DEIDENTIFICATION_TAG_PATTERN: &str =
     r"\[Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile\]";
 
-fn address() -> String {
-    env::var("ORC_ORTHANC_ADDRESS").unwrap()
-}
-
-fn username() -> String {
-    env::var("ORC_ORTHANC_USERNAME").unwrap()
-}
-
-fn password() -> String {
-    env::var("ORC_ORTHANC_PASSWORD").unwrap()
-}
-
-fn datafiles_path() -> String {
-    env::var("ORC_DATAFILES_PATH").unwrap()
-}
-
 fn client() -> Client {
-    Client::new(&address(), Some(&username()), Some(&password()))
+    Client::new(env::var("ORC_ORTHANC_ADDRESS").unwrap()).auth(
+        env::var("ORC_ORTHANC_USERNAME").unwrap(),
+        env::var("ORC_ORTHANC_PASSWORD").unwrap(),
+    )
 }
 
 fn first_patient() -> String {
@@ -101,7 +88,11 @@ fn find_patient_by_patient_id(patient_id: &str) -> Option<Patient> {
 fn run_curl(url: &str) -> Vec<u8> {
     Command::new("curl")
         .arg("--user")
-        .arg(format!("{}:{}", username(), password()))
+        .arg(format!(
+            "{}:{}",
+            env::var("ORC_ORTHANC_USERNAME").unwrap(),
+            env::var("ORC_ORTHANC_PASSWORD").unwrap()
+        ))
         .arg(url)
         .output()
         .unwrap()
@@ -160,7 +151,12 @@ fn assert_tag_is_absent(path: &str, tag_id: &str) {
 }
 
 fn expected_response(path: &str) -> Value {
-    from_slice(&run_curl(&format!("{}/{}", address(), path))).unwrap()
+    from_slice(&run_curl(&format!(
+        "{}/{}",
+        env::var("ORC_ORTHANC_ADDRESS").unwrap(),
+        path
+    )))
+    .unwrap()
 }
 
 #[test]
@@ -808,7 +804,7 @@ fn test_anonymize_patient_empty_body() {
 fn test_upload_dicom() {
     let data = fs::read(format!(
         "{}/{}",
-        datafiles_path(),
+        env::var("ORC_DATAFILES_PATH").unwrap(),
         UPLOAD_INSTANCE_FILE_PATH
     ))
     .unwrap();

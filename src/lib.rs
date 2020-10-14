@@ -8,49 +8,10 @@ use std::fmt;
 use std::result;
 use std::str;
 
-type Result<T> = result::Result<T, Error>;
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct Error {
-    pub details: String,
-    // TODO: This is pretty ugly
-    pub api_error: Option<ApiError>,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {:#?}", self.details, self.api_error)
-    }
-}
-
-impl Error {
-    fn new(msg: &str, api_error: Option<ApiError>) -> Error {
-        Error {
-            details: msg.to_string(),
-            api_error,
-        }
-    }
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(e: reqwest::Error) -> Self {
-        Error::new(&e.to_string(), None)
-    }
-}
-
-impl From<serde_json::error::Error> for Error {
-    fn from(e: serde_json::error::Error) -> Self {
-        Error::new(&e.to_string(), None)
-    }
-}
-
-impl From<str::Utf8Error> for Error {
-    fn from(e: str::Utf8Error) -> Self {
-        Error::new(&e.to_string(), None)
-    }
-}
-
-/// Orthanc entity types
+/// Orthanc entity types.
+///
+/// Orthanc operates with 4 entity types, which correspond to the ones, available in DICOM.
+/// In descending hierarchical order: Patient, Study, Series, Instance
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum Entity {
     Patient,
@@ -59,7 +20,6 @@ pub enum Entity {
     Instance,
 }
 
-/// Modality
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Modality {
@@ -149,6 +109,7 @@ pub struct Instance {
     pub anonymized_from: Option<String>,
 }
 
+/// Anonymization request body
 #[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Anonymization {
@@ -162,6 +123,7 @@ pub struct Anonymization {
     pub dicom_version: Option<String>,
 }
 
+/// Modification request body
 #[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Modification {
@@ -173,6 +135,13 @@ pub struct Modification {
     pub force: Option<bool>,
 }
 
+/// Ancestor of an entity
+///
+/// Returned as response body in DELETE responses to indicate the remaining ancestor of the deleted
+/// entity.
+///
+/// For example, an ancestor of a deleted Instance is a Series, an ancestor of a deleted Study is a
+/// Patient. Patient does not have an ancestor.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Ancestor {
@@ -183,6 +152,16 @@ pub struct Ancestor {
     pub entity: Entity,
 }
 
+/// Remaining ancestor response
+///
+/// Returned as response body in DELETE responses. See `Ancestor` for details.
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct RemainingAncestor {
+    pub remaining_ancestor: Option<Ancestor>,
+}
+
+/// Result of a DICOM upload request
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct UploadResult {
@@ -195,6 +174,7 @@ pub struct UploadResult {
     pub parent_series: String,
 }
 
+/// Result of a C-STORE request (sending entities to a modality)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct StoreResult {
@@ -206,6 +186,20 @@ pub struct StoreResult {
     failed_instances_count: u64,
 }
 
+/// Result of a modification or anonymization request
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ModificationResult {
+    #[serde(rename = "ID")]
+    pub id: String,
+    #[serde(rename = "PatientID")]
+    pub patient_id: String,
+    pub path: String,
+    #[serde(rename = "Type")]
+    pub entity: Entity,
+}
+
+/// Structure of Orthanc's API error
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ApiError {
@@ -219,22 +213,46 @@ pub struct ApiError {
     pub orthanc_error: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-pub struct ModificationResult {
-    #[serde(rename = "ID")]
-    pub id: String,
-    #[serde(rename = "PatientID")]
-    pub patient_id: String,
-    pub path: String,
-    #[serde(rename = "Type")]
-    pub entity: Entity,
+type Result<T> = result::Result<T, Error>;
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct Error {
+    pub details: String,
+    // TODO: This is pretty ugly
+    pub api_error: Option<ApiError>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-pub struct RemainingAncestor {
-    pub remaining_ancestor: Option<Ancestor>,
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {:#?}", self.details, self.api_error)
+    }
+}
+
+impl Error {
+    fn new(msg: &str, api_error: Option<ApiError>) -> Error {
+        Error {
+            details: msg.to_string(),
+            api_error,
+        }
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Error::new(&e.to_string(), None)
+    }
+}
+
+impl From<serde_json::error::Error> for Error {
+    fn from(e: serde_json::error::Error) -> Self {
+        Error::new(&e.to_string(), None)
+    }
+}
+
+impl From<str::Utf8Error> for Error {
+    fn from(e: str::Utf8Error) -> Self {
+        Error::new(&e.to_string(), None)
+    }
 }
 
 pub struct Client {
@@ -246,13 +264,19 @@ pub struct Client {
 
 impl Client {
     /// Create a new client.
-    pub fn new(server: &str, username: Option<&str>, password: Option<&str>) -> Client {
+    pub fn new(server: String) -> Client {
         Client {
-            server: server.to_string(),
-            username: username.map(|u| u.to_string()),
-            password: password.map(|p| p.to_string()),
+            server,
+            username: None,
+            password: None,
             client: reqwest::blocking::Client::new(),
         }
+    }
+
+    pub fn auth(mut self, username: String, password: String) -> Client {
+        self.username = Some(username);
+        self.password = Some(password);
+        self
     }
 
     fn add_auth(
@@ -735,7 +759,7 @@ mod tests {
             .return_body("foo")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.patients();
         assert_eq!(
             resp.unwrap_err(),
@@ -748,7 +772,8 @@ mod tests {
 
     #[test]
     fn test_error_from_reqwest() {
-        let cl = Client::new("http://foo", Some("foo"), Some("bar"));
+        let cl = Client::new("http://foo".to_string())
+            .auth("foo".to_string(), "bar".to_string());
         let resp = cl.patients();
 
         let expected_err = concat!(
@@ -782,15 +807,16 @@ mod tests {
 
     #[test]
     fn test_default_fields() {
-        let cl = Client::new("http://localhost:8042", None, None);
-        assert_eq!(cl.server, "http://localhost:8042");
+        let cl = Client::new("http://localhost:8042".to_string());
+        assert_eq!(cl.server, "http://localhost:8042".to_string());
         assert_eq!(cl.username, None);
         assert_eq!(cl.password, None);
     }
 
     #[test]
     fn test_auth() {
-        let cl = Client::new("http://localhost:8042", Some("foo"), Some("bar"));
+        let cl = Client::new("http://localhost:8042".to_string())
+            .auth("foo".to_string(), "bar".to_string());
         assert_eq!(cl.username, Some("foo".to_string()));
         assert_eq!(cl.password, Some("bar".to_string()));
     }
@@ -808,7 +834,7 @@ mod tests {
             .return_body("bar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
         let resp = cl.get("foo").unwrap();
 
         assert_eq!(resp, "bar");
@@ -828,7 +854,7 @@ mod tests {
             .return_body("bar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
         let resp = cl.get_bytes("foo").unwrap();
 
         assert_eq!(resp, "bar");
@@ -850,7 +876,7 @@ mod tests {
             .return_body("baz")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
         let resp = cl.post("foo", serde_json::json!("bar")).unwrap();
 
         assert_eq!(resp, "baz");
@@ -872,7 +898,7 @@ mod tests {
             .return_body("baz")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
         let resp = cl.post_bytes("foo", "bar".as_bytes()).unwrap();
 
         assert_eq!(resp, "baz");
@@ -891,7 +917,7 @@ mod tests {
             .return_status(200)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
         let resp = cl.delete("foo").unwrap();
 
         assert_eq!(resp, "");
@@ -923,7 +949,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url);
         let resp = cl.get("foo");
 
         assert_eq!(
@@ -972,7 +998,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url);
         let resp = cl.get_bytes("foo");
 
         assert_eq!(
@@ -1021,7 +1047,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url);
         let resp = cl.post("foo", serde_json::json!("bar"));
 
         assert_eq!(
@@ -1070,7 +1096,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url);
         let resp = cl.post_receive_bytes("foo", serde_json::json!("bar"));
 
         assert_eq!(
@@ -1119,7 +1145,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url);
         let resp = cl.post_bytes("foo", &[13, 42, 17]);
 
         assert_eq!(
@@ -1168,7 +1194,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url);
         let resp = cl.delete("foo");
 
         assert_eq!(
@@ -1203,7 +1229,7 @@ mod tests {
             .return_status(404)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, Some("foo"), Some("bar"));
+        let cl = Client::new(url);
         let resp = cl.get("foo");
 
         assert!(resp.is_err());
@@ -1230,7 +1256,7 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let modalities = cl.modalities().unwrap();
 
         assert_eq!(modalities, ["foo", "bar", "baz"]);
@@ -1250,7 +1276,7 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let patient_ids = cl.patients().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
@@ -1270,7 +1296,7 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let patient_ids = cl.studies().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
@@ -1290,7 +1316,7 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let patient_ids = cl.series_list().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
@@ -1310,7 +1336,7 @@ mod tests {
             .return_body(r#"["foo", "bar", "baz"]"#)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let patient_ids = cl.instances().unwrap();
 
         assert_eq!(patient_ids, ["foo", "bar", "baz"]);
@@ -1364,7 +1390,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let modalities = cl.modalities_expanded().unwrap();
 
         assert_eq!(
@@ -1453,7 +1479,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let patients = cl.patients_expanded().unwrap();
 
         assert_eq!(
@@ -1564,7 +1590,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let studies = cl.studies_expanded().unwrap();
 
         assert_eq!(
@@ -1695,7 +1721,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let series = cl.series_expanded().unwrap();
 
         assert_eq!(
@@ -1811,7 +1837,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let instances = cl.instances_expanded().unwrap();
 
         assert_eq!(
@@ -1894,7 +1920,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let patient = cl.patient("foo").unwrap();
 
         assert_eq!(
@@ -1960,7 +1986,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let study = cl.study("foo").unwrap();
 
         assert_eq!(
@@ -2029,7 +2055,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let instance = cl.instance("foo").unwrap();
 
         assert_eq!(
@@ -2097,7 +2123,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let series = cl.series("foo").unwrap();
 
         assert_eq!(
@@ -2158,7 +2184,7 @@ mod tests {
             .return_body(body)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.instance_tags("foo").unwrap();
 
         let expected_resp: Value = serde_json::from_str(body).unwrap();
@@ -2211,7 +2237,7 @@ mod tests {
             .return_body(body)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.instance_tags_expanded("foo").unwrap();
 
         let expected_resp: Value = serde_json::from_str(body).unwrap();
@@ -2232,7 +2258,7 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.patient_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
@@ -2252,7 +2278,7 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.study_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
@@ -2272,7 +2298,7 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.series_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
@@ -2292,7 +2318,7 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.instance_dicom("foo").unwrap();
 
         assert_eq!(resp, "foobar".as_bytes());
@@ -2324,7 +2350,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.store("them", &["bar", "baz", "qux"]).unwrap();
 
         assert_eq!(
@@ -2371,7 +2397,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .modify(
                 "studies",
@@ -2423,7 +2449,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .anonymize(
                 "studies",
@@ -2475,7 +2501,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .modify_patient(
                 "foo",
@@ -2525,7 +2551,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .modify_study(
                 "foo",
@@ -2575,7 +2601,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .modify_series(
                 "foo",
@@ -2616,7 +2642,7 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .modify_instance(
                 "foo",
@@ -2659,7 +2685,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .anonymize_patient(
                 "foo",
@@ -2711,7 +2737,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .anonymize_study(
                 "foo",
@@ -2763,7 +2789,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .anonymize_series(
                 "foo",
@@ -2806,7 +2832,7 @@ mod tests {
             .return_body("foobar")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl
             .anonymize_instance(
                 "foo",
@@ -2835,7 +2861,7 @@ mod tests {
             .return_body(r#"{"RemainingAncestor": null}"#)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.delete_patient("foo").unwrap();
 
         assert_eq!(
@@ -2869,7 +2895,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.delete_study("foo").unwrap();
 
         assert_eq!(
@@ -2907,7 +2933,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.delete_series("foo").unwrap();
 
         assert_eq!(
@@ -2945,7 +2971,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.delete_instance("foo").unwrap();
 
         assert_eq!(
@@ -2973,7 +2999,7 @@ mod tests {
             .return_body("{}")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.echo("foo", None).unwrap();
 
         assert_eq!(resp, ());
@@ -2993,7 +3019,7 @@ mod tests {
             .return_body("{}")
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.echo("foo", Some(42)).unwrap();
 
         assert_eq!(resp, ());
@@ -3011,7 +3037,7 @@ mod tests {
             .return_status(500)
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.echo("foo", None);
 
         assert_eq!(
@@ -3048,7 +3074,7 @@ mod tests {
             )
             .create_on(&mock_server);
 
-        let cl = Client::new(&url, None, None);
+        let cl = Client::new(url);
         let resp = cl.upload("quux".as_bytes()).unwrap();
 
         assert_eq!(
