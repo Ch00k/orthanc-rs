@@ -7,11 +7,10 @@
 of [Orthanc](https://book.orthanc-server.com/users/rest.html), an open-source, lightweight
 DICOM server.
 
-## Installation
+To use the crate, add the dependency to your `Cargo.toml`:
 
-Add the dependency to your `Cargo.toml`:
-
-```
+```ini
+[dependencies]
 orthanc = "0.1"
 ```
 
