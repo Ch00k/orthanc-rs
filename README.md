@@ -9,4 +9,53 @@ DICOM server.
 
 ## Installation
 
+Add the dependency to your `Cargo.toml`:
+
+```
+orthanc = "0.1"
+```
+
 ## Usage
+
+Create an API client instance:
+
+```rust
+use orthanc::Client;
+let client = Client::new("http://localhost:8042".to_string());
+```
+
+If authentication is enabled on the Orthanc instance:
+
+```rust
+client.auth("username".to_string(), "password".to_string());
+```
+
+List patients:
+
+```rust
+client.patients();
+```
+
+Or in an expanded format:
+
+```rust
+client.patients_expanded();
+```
+
+Get all DICOM tags of an instance:
+
+```rust
+let instance_id = "0b62ebce-8ab7b938-e5ca1b05-04802ab3-42ee4307";
+let tags = client.instance_tags(instance_id);
+println!("{}", tags["PatientID"]);
+```
+
+Even though the operation is not very efficient, Orthanc allows uploading DICOM files over
+REST API:
+
+```rust
+let data = fs::read("/tmp/instance.dcm").unwrap();
+client.upload(&data).unwrap();
+```
+
+See `tests` directory for more usage examples.

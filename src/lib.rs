@@ -400,35 +400,35 @@ impl Client {
         self.list("instances")
     }
 
-    /// List all modalities in an epanded format
+    /// List all modalities in an expanded format
     pub fn modalities_expanded(&self) -> Result<HashMap<String, Modality>> {
         let resp = self.get("modalities?expand")?;
         let json: HashMap<String, Modality> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
-    /// List all patients in an epanded format
+    /// List all patients in an expanded format
     pub fn patients_expanded(&self) -> Result<Vec<Patient>> {
         let resp = self.get("patients?expand")?;
         let json: Vec<Patient> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
-    /// List all studies in an epanded format
+    /// List all studies in an expanded format
     pub fn studies_expanded(&self) -> Result<Vec<Study>> {
         let resp = self.get("studies?expand")?;
         let json: Vec<Study> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
-    /// List all series in an epanded format
+    /// List all series in an expanded format
     pub fn series_expanded(&self) -> Result<Vec<Series>> {
         let resp = self.get("series?expand")?;
         let json: Vec<Series> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
-    /// List all instances in an epanded format
+    /// List all instances in an expanded format
     pub fn instances_expanded(&self) -> Result<Vec<Instance>> {
         let resp = self.get("instances?expand")?;
         let json: Vec<Instance> = serde_json::from_slice(&resp)?;
@@ -474,7 +474,7 @@ impl Client {
         Ok(json)
     }
 
-    /// Get all DICOM tags of an instance in an extended format
+    /// Get all DICOM tags of an instance in an expanded format
     ///
     /// See related Orthanc documentation
     /// [section](https://book.orthanc-server.com/users/rest.html#accessing-the-dicom-fields-of-an-instance-as-a-json-file)
