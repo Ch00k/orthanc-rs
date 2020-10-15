@@ -1,5 +1,5 @@
 use maplit::hashmap;
-use orthanc_client::*;
+use orthanc::*;
 use regex::Regex;
 use serde_json;
 use serde_json::{from_slice, json, Value};

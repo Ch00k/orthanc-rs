@@ -1,5 +1,5 @@
 [package]
-name = "orthanc_client"
+name = "orthanc"
 description = "Client for Orthanc REST API"
 version = "0.0.1"
 authors = ["Andrii Yurchuk <ay@mntw.re>"]
@@ -7,7 +7,7 @@ edition = "2018"
 repository = "https://github.com/Ch00k/orthanc-rest-client"
 homepage = "https://github.com/Ch00k/orthanc-rest-client"
 keywords = ["api", "orthanc", "rest", "client"]
-categories = ["command-line-utilities"]
+categories = ["api-bindings"]
 readme = "README.md"
 license = "WTFPL"
 autotests = false
