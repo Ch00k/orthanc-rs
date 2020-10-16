@@ -306,8 +306,8 @@ fn test_instance_content() {
 fn test_instance_tag() {
     let instance = first_instance();
     assert_eq!(
-        client().instance_tag(&instance, "0020-0032").unwrap(),
-        client().instance(&instance).unwrap().main_dicom_tags["ImagePositionPatient"]
+        client().instance_tag(&instance, "0020-0013").unwrap(),
+        client().instance(&instance).unwrap().main_dicom_tags["InstanceNumber"]
     );
 }
 

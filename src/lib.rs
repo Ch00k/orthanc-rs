@@ -552,7 +552,7 @@ impl Client {
     /// `tag` is the DICOM tag coding, e.g. `0008-0018`
     pub fn instance_tag(&self, id: &str, tag: &str) -> Result<String> {
         let resp = self.get(&format!("instances/{}/content/{}", id, tag))?;
-        Ok(String::from_utf8_lossy(&resp).to_string())
+        Ok(String::from_utf8_lossy(&resp).trim().to_string())
     }
 
     /// Download a patient as a collection of DICOM files
