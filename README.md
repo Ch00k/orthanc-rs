@@ -61,7 +61,6 @@ See `tests` directory for more usage examples.
 
 ## TODO
 
-* Instance raw DICOM tags (`/instances/<id>/content`)
 * Instance images (`/instances/<id>/{preview,image-uint8,image-uint16}`)
 * Split/merge studies (`/studies/<id>/{split,merge}`)
 * C-MOVE (`/modalities/<id>/move`)
