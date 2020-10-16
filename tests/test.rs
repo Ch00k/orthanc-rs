@@ -294,6 +294,24 @@ fn test_get_instance_tags_expanded() {
 }
 
 #[test]
+fn test_instance_content() {
+    let instance = first_instance();
+    assert_eq!(
+        json!(client().instance_content(&instance).unwrap()),
+        expected_response(&format!("instances/{}/content", instance))
+    );
+}
+
+#[test]
+fn test_instance_tag() {
+    let instance = first_instance();
+    assert_eq!(
+        client().instance_tag(&instance, "0020-0013").unwrap(),
+        client().instance(&instance).unwrap().main_dicom_tags["InstanceNumber"]
+    );
+}
+
+#[test]
 fn test_get_patient_dicom() {
     let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
     let resp = client().patient_dicom(&patient.id).unwrap();

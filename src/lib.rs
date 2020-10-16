@@ -538,6 +538,23 @@ impl Client {
         Ok(json)
     }
 
+    /// Get all DICOM tags' codings of an instance
+    ///
+    /// Returns a `Vec<String>` of the following format: `["0008-0018", "0040-0260", "0040-0254"]`
+    pub fn instance_content(&self, id: &str) -> Result<Vec<String>> {
+        let resp = self.get(&format!("instances/{}/content", id))?;
+        let json = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// Get the value of a specific DICOM tag of an instance
+    ///
+    /// `tag` is the DICOM tag coding, e.g. `0008-0018`
+    pub fn instance_tag(&self, id: &str, tag: &str) -> Result<String> {
+        let resp = self.get(&format!("instances/{}/content/{}", id, tag))?;
+        Ok(String::from_utf8_lossy(&resp).trim().to_string())
+    }
+
     /// Download a patient as a collection of DICOM files
     ///
     /// Downloaded file a ZIP archive
@@ -2168,6 +2185,52 @@ mod tests {
 
         let expected_resp: Value = serde_json::from_str(body).unwrap();
         assert_eq!(resp, expected_resp);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_instance_content() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+        let body = r#"
+            [
+                "0040-0253",
+                "0040-0254",
+                "0040-0260"
+
+            ]
+        "#;
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances/foo/content")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(body)
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let resp = cl.instance_content("foo").unwrap();
+
+        assert_eq!(resp, ["0040-0253", "0040-0254", "0040-0260"]);
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_instance_tag() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/instances/foo/content/bar")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body("FOOBAR")
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let resp = cl.instance_tag("foo", "bar").unwrap();
+
+        assert_eq!(resp, "FOOBAR");
         assert_eq!(m.times_called(), 1);
     }
 
