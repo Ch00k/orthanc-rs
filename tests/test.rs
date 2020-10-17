@@ -841,7 +841,7 @@ fn test_get_dicom_tag_value_patient() {
         client()
             .patient(&first_patient())
             .unwrap()
-            .get_dicom_tag_value("FooBar"),
+            .main_dicom_tag("FooBar"),
         None
     );
 }
@@ -852,7 +852,7 @@ fn test_get_dicom_tag_value_study() {
         client()
             .study(&first_study())
             .unwrap()
-            .get_dicom_tag_value("FooBar"),
+            .main_dicom_tag("FooBar"),
         None
     );
 }
@@ -863,7 +863,7 @@ fn test_get_dicom_tag_value_series() {
         client()
             .series(&first_series())
             .unwrap()
-            .get_dicom_tag_value("FooBar"),
+            .main_dicom_tag("FooBar"),
         None
     );
 }
@@ -874,7 +874,7 @@ fn test_get_dicom_tag_value_instance() {
         client()
             .instance(&first_instance())
             .unwrap()
-            .get_dicom_tag_value("FooBar"),
+            .main_dicom_tag("FooBar"),
         None
     );
 }

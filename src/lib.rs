@@ -80,7 +80,7 @@ pub trait Entity {
     /// Get the tag value from `main_dicom_tags` by tag name
     ///
     /// If no tag with such name exists, a `None` is returned
-    fn get_dicom_tag_value(&self, tag: &str) -> Option<&str> {
+    fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
         self.main_dicom_tags().get(tag).map(AsRef::as_ref)
     }
 }
@@ -3260,8 +3260,8 @@ mod tests {
             entity: EntityType::Patient,
             anonymized_from: None,
         };
-        assert_eq!(patient.get_dicom_tag_value("PatientID"), Some("123456789"));
-        assert_eq!(patient.get_dicom_tag_value("FooBar"), None);
+        assert_eq!(patient.main_dicom_tag("PatientID"), Some("123456789"));
+        assert_eq!(patient.main_dicom_tag("FooBar"), None);
     }
 
     #[test]
@@ -3293,8 +3293,8 @@ mod tests {
             entity: EntityType::Study,
             anonymized_from: None,
         };
-        assert_eq!(study.get_dicom_tag_value("StudyID"), Some("1742"));
-        assert_eq!(study.get_dicom_tag_value("FooBar"), None);
+        assert_eq!(study.main_dicom_tag("StudyID"), Some("1742"));
+        assert_eq!(study.main_dicom_tag("FooBar"), None);
     }
 
     #[test]
@@ -3325,8 +3325,8 @@ mod tests {
             entity: EntityType::Series,
             anonymized_from: None,
         };
-        assert_eq!(series.get_dicom_tag_value("SeriesNumber"), Some("1101"));
-        assert_eq!(series.get_dicom_tag_value("FooBar"), None);
+        assert_eq!(series.main_dicom_tag("SeriesNumber"), Some("1101"));
+        assert_eq!(series.main_dicom_tag("FooBar"), None);
     }
 
     #[test]
@@ -3349,7 +3349,7 @@ mod tests {
             entity: EntityType::Instance,
             anonymized_from: None,
         };
-        assert_eq!(instance.get_dicom_tag_value("InstanceNumber"), Some("13"));
-        assert_eq!(instance.get_dicom_tag_value("FooBar"), None);
+        assert_eq!(instance.main_dicom_tag("InstanceNumber"), Some("13"));
+        assert_eq!(instance.main_dicom_tag("FooBar"), None);
     }
 }
