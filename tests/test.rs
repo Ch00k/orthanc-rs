@@ -391,7 +391,7 @@ fn test_delete() {
             remaining_ancestor: Some(Ancestor {
                 id: instance.parent_series,
                 path: format!("/series/{}", series.id),
-                entity: Entity::Series,
+                entity: EntityType::Series,
             })
         }
     );
@@ -412,7 +412,7 @@ fn test_delete() {
             remaining_ancestor: Some(Ancestor {
                 id: series.parent_study,
                 path: format!("/studies/{}", study.id),
-                entity: Entity::Study,
+                entity: EntityType::Study,
             })
         }
     );
@@ -433,7 +433,7 @@ fn test_delete() {
             remaining_ancestor: Some(Ancestor {
                 id: study.parent_patient,
                 path: format!("/patients/{}", patient.id),
-                entity: Entity::Patient,
+                entity: EntityType::Patient,
             })
         }
     );
@@ -832,4 +832,49 @@ fn test_upload_dicom() {
 
     let resp = client().upload(&data).unwrap();
     assert_eq!(resp.status, "AlreadyStored");
+}
+
+// These just test the method access
+#[test]
+fn test_get_dicom_tag_value_patient() {
+    assert_eq!(
+        client()
+            .patient(&first_patient())
+            .unwrap()
+            .get_dicom_tag_value("FooBar"),
+        None
+    );
+}
+
+#[test]
+fn test_get_dicom_tag_value_study() {
+    assert_eq!(
+        client()
+            .study(&first_study())
+            .unwrap()
+            .get_dicom_tag_value("FooBar"),
+        None
+    );
+}
+
+#[test]
+fn test_get_dicom_tag_value_series() {
+    assert_eq!(
+        client()
+            .series(&first_series())
+            .unwrap()
+            .get_dicom_tag_value("FooBar"),
+        None
+    );
+}
+
+#[test]
+fn test_get_dicom_tag_value_instance() {
+    assert_eq!(
+        client()
+            .instance(&first_instance())
+            .unwrap()
+            .get_dicom_tag_value("FooBar"),
+        None
+    );
 }
