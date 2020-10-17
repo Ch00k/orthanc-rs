@@ -74,7 +74,12 @@ pub enum EntityType {
 }
 
 pub trait Entity {
+    /// Getter for `main_dicom_tags` field
     fn main_dicom_tags(&self) -> &HashMap<String, String>;
+
+    /// Get the tag value from `main_dicom_tags` by tag name
+    ///
+    /// If no tag with such name exists, a `None` is returned
     fn get_dicom_tag_value(&self, tag: &str) -> Option<&str> {
         self.main_dicom_tags().get(tag).map(AsRef::as_ref)
     }
