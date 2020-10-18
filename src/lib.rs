@@ -136,7 +136,13 @@ pub struct Study {
 
 impl Study {
     pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
-        self.main_dicom_tags.get(tag).map(AsRef::as_ref)
+        match self.main_dicom_tags.get(tag).map(AsRef::as_ref) {
+            Some(v) => Some(v),
+            None => match self.patient_main_dicom_tags.get(tag).map(AsRef::as_ref) {
+                Some(v) => Some(v),
+                None => None,
+            },
+        }
     }
 }
 
@@ -3282,6 +3288,7 @@ mod tests {
             anonymized_from: None,
         };
         assert_eq!(study.main_dicom_tag("StudyID"), Some("1742"));
+        assert_eq!(study.main_dicom_tag("PatientID"), Some("c137"));
         assert_eq!(study.main_dicom_tag("FooBar"), None);
     }
 
