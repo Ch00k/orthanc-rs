@@ -109,6 +109,13 @@ pub struct Patient {
     pub anonymized_from: Option<String>,
 }
 
+impl Patient {
+    /// Get the value of a DICOM tag from `main_dicom_tags`
+    pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
+        self.main_dicom_tags.get(tag).map(AsRef::as_ref)
+    }
+}
+
 /// Study
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -126,6 +133,17 @@ pub struct Study {
     pub entity: Entity,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymized_from: Option<String>,
+}
+
+impl Study {
+    /// Get the value of a DICOM tag from `main_dicom_tags`, or if the tag is absent there, from
+    /// `patient_main_dicom_tags`.
+    pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
+        match self.main_dicom_tags.get(tag).map(AsRef::as_ref) {
+            Some(v) => Some(v),
+            None => self.patient_main_dicom_tags.get(tag).map(AsRef::as_ref),
+        }
+    }
 }
 
 /// Series
@@ -148,6 +166,13 @@ pub struct Series {
     pub anonymized_from: Option<String>,
 }
 
+impl Series {
+    /// Get the value of a DICOM tag from `main_dicom_tags`
+    pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
+        self.main_dicom_tags.get(tag).map(AsRef::as_ref)
+    }
+}
+
 /// Instance
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -165,6 +190,13 @@ pub struct Instance {
     pub entity: Entity,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymized_from: Option<String>,
+}
+
+impl Instance {
+    /// Get the value of a DICOM tag from `main_dicom_tags`
+    pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
+        self.main_dicom_tags.get(tag).map(AsRef::as_ref)
+    }
 }
 
 /// Anonymization request body
@@ -3205,5 +3237,116 @@ mod tests {
                 api_error: None
             },
         );
+    }
+
+    #[test]
+    fn test_get_dicom_tag_value_patient() {
+        let patient = Patient {
+            id: "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493".to_string(),
+            is_stable: true,
+            last_update: NaiveDate::from_ymd(2020, 1, 1).and_hms(15, 46, 17),
+            main_dicom_tags: hashmap! {
+                "OtherPatientIDs".to_string() => "".to_string(),
+                "PatientBirthDate".to_string() => "19670101".to_string(),
+                "PatientID".to_string() => "123456789".to_string(),
+                "PatientName".to_string() => "Rick Sanchez".to_string(),
+                "PatientSex".to_string() => "M".to_string()
+            },
+            studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()].to_vec(),
+            entity: Entity::Patient,
+            anonymized_from: None,
+        };
+        assert_eq!(patient.main_dicom_tag("PatientID"), Some("123456789"));
+        assert_eq!(patient.main_dicom_tag("FooBar"), None);
+    }
+
+    #[test]
+    fn test_get_dicom_tag_value_study() {
+        let study = Study {
+            id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+            is_stable: true,
+            last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+            main_dicom_tags: hashmap! {
+                "AccessionNumber".to_string() => "foobar".to_string(),
+                "StudyDate".to_string() => "20110101".to_string(),
+                "StudyDescription".to_string() => "Brain".to_string(),
+                "StudyID".to_string() => "1742".to_string(),
+                "StudyInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                "StudyTime".to_string() => "084707".to_string()
+            },
+            parent_patient: "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe".to_string(),
+            patient_main_dicom_tags: hashmap! {
+                "PatientBirthDate".to_string() => "19440101".to_string(),
+                "PatientID".to_string() => "c137".to_string(),
+                "PatientName".to_string() => "Rick Sanchez".to_string(),
+                "PatientSex".to_string() => "M".to_string(),
+            },
+            series: [
+                "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+                "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string(),
+            ]
+            .to_vec(),
+            entity: Entity::Study,
+            anonymized_from: None,
+        };
+        assert_eq!(study.main_dicom_tag("StudyID"), Some("1742"));
+        assert_eq!(study.main_dicom_tag("PatientID"), Some("c137"));
+        assert_eq!(study.main_dicom_tag("FooBar"), None);
+    }
+
+    #[test]
+    fn test_get_dicom_tag_value_series() {
+        let series = Series {
+            id: "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+            status: "Unknown".to_string(),
+            is_stable: true,
+            last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+            main_dicom_tags: hashmap! {
+                "BodyPartExamined".to_string() => "ABDOMEN".to_string(),
+                "Modality".to_string() => "MR".to_string(),
+                "ProtocolName".to_string() => "TCP".to_string(),
+                "SeriesDate".to_string() => "20110101".to_string(),
+                "SeriesInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+                "SeriesNumber".to_string() => "1101".to_string(),
+                "SeriesTime".to_string() => "091313.93".to_string(),
+
+            },
+            parent_study: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+            expected_number_of_instances: Some(17),
+            instances: [
+                "556530b5-de7c487b-110b9d0e-12cfdbb9-f06b546e".to_string(),
+                "c46605db-836489fa-cb55fbbc-13c8a913-b0bad6ac".to_string(),
+                "9b63498d-cae4f25e-f52206b2-cbb4dc0e-dc55c788".to_string(),
+            ]
+            .to_vec(),
+            entity: Entity::Series,
+            anonymized_from: None,
+        };
+        assert_eq!(series.main_dicom_tag("SeriesNumber"), Some("1101"));
+        assert_eq!(series.main_dicom_tag("FooBar"), None);
+    }
+
+    #[test]
+    fn test_get_dicom_tag_value_instance() {
+        let instance = Instance {
+            id: "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c".to_string(),
+            main_dicom_tags: hashmap! {
+                "ImageOrientationPatient".to_string() => "1\\0\\0\\0\\1\\0".to_string(),
+                "ImagePositionPatient".to_string() => "-17\\42\\13".to_string(),
+                "InstanceCreationDate".to_string() => "20130326".to_string(),
+                "InstanceCreationTime".to_string() => "135901".to_string(),
+                "InstanceNumber".to_string() => "13".to_string(),
+                "SOPInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+            },
+            parent_series: "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03".to_string(),
+            index_in_series: 13,
+            file_uuid: "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e".to_string(),
+            file_size: 139402,
+            modified_from: Some("22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()),
+            entity: Entity::Instance,
+            anonymized_from: None,
+        };
+        assert_eq!(instance.main_dicom_tag("InstanceNumber"), Some("13"));
+        assert_eq!(instance.main_dicom_tag("FooBar"), None);
     }
 }

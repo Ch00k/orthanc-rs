@@ -833,3 +833,48 @@ fn test_upload_dicom() {
     let resp = client().upload(&data).unwrap();
     assert_eq!(resp.status, "AlreadyStored");
 }
+
+// These just test the method access
+#[test]
+fn test_get_dicom_tag_value_patient() {
+    assert_eq!(
+        client()
+            .patient(&first_patient())
+            .unwrap()
+            .main_dicom_tag("FooBar"),
+        None
+    );
+}
+
+#[test]
+fn test_get_dicom_tag_value_study() {
+    assert_eq!(
+        client()
+            .study(&first_study())
+            .unwrap()
+            .main_dicom_tag("FooBar"),
+        None
+    );
+}
+
+#[test]
+fn test_get_dicom_tag_value_series() {
+    assert_eq!(
+        client()
+            .series(&first_series())
+            .unwrap()
+            .main_dicom_tag("FooBar"),
+        None
+    );
+}
+
+#[test]
+fn test_get_dicom_tag_value_instance() {
+    assert_eq!(
+        client()
+            .instance(&first_instance())
+            .unwrap()
+            .main_dicom_tag("FooBar"),
+        None
+    );
+}
