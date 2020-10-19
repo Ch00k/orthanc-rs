@@ -110,6 +110,7 @@ pub struct Patient {
 }
 
 impl Patient {
+    /// Get the value of a DICOM tag from `main_dicom_tags`
     pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
         self.main_dicom_tags.get(tag).map(AsRef::as_ref)
     }
@@ -135,6 +136,8 @@ pub struct Study {
 }
 
 impl Study {
+    /// Get the value of a DICOM tag from `main_dicom_tags`, or if the tag is absent there, from
+    /// `patient_main_dicom_tags`.
     pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
         match self.main_dicom_tags.get(tag).map(AsRef::as_ref) {
             Some(v) => Some(v),
@@ -164,6 +167,7 @@ pub struct Series {
 }
 
 impl Series {
+    /// Get the value of a DICOM tag from `main_dicom_tags`
     pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
         self.main_dicom_tags.get(tag).map(AsRef::as_ref)
     }
@@ -189,6 +193,7 @@ pub struct Instance {
 }
 
 impl Instance {
+    /// Get the value of a DICOM tag from `main_dicom_tags`
     pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
         self.main_dicom_tags.get(tag).map(AsRef::as_ref)
     }
