@@ -138,10 +138,7 @@ impl Study {
     pub fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
         match self.main_dicom_tags.get(tag).map(AsRef::as_ref) {
             Some(v) => Some(v),
-            None => match self.patient_main_dicom_tags.get(tag).map(AsRef::as_ref) {
-                Some(v) => Some(v),
-                None => None,
-            },
+            None => self.patient_main_dicom_tags.get(tag).map(AsRef::as_ref),
         }
     }
 }
