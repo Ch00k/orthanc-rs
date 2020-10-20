@@ -1,5 +1,8 @@
+[![crate](https://img.shields.io/crates/v/orthanc.svg)](https://crates.io/crates/orthanc)
+[![doc](https://docs.rs/orthanc/badge.svg)](https://docs.rs/orthanc)
 [![test](https://github.com/Ch00k/orthanc-rs/workflows/tests/badge.svg)](https://github.com/Ch00k/orthanc-rs/actions)
-[![codecov.io](https://codecov.io/gh/Ch00k/orthanc-rs/branch/master/graphs/badge.svg)](https://codecov.io/github/Ch00k/orthanc-rs)
+[![codecov](https://codecov.io/gh/Ch00k/orthanc-rs/branch/master/graphs/badge.svg)](https://codecov.io/github/Ch00k/orthanc-rs)
+[![license](https://img.shields.io/crates/l/orthanc.svg)](./LICENSE)
 
 # orthanc-rs
 
