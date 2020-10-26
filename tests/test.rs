@@ -399,8 +399,8 @@ fn test_delete() {
     assert_eq!(
         resp.unwrap_err(),
         Error {
-            details: "404".to_string(),
-            api_error: None,
+            message: "API error: 404 Not Found".to_string(),
+            details: None,
         },
     );
 
@@ -420,8 +420,8 @@ fn test_delete() {
     assert_eq!(
         resp.unwrap_err(),
         Error {
-            details: "404".to_string(),
-            api_error: None,
+            message: "API error: 404 Not Found".to_string(),
+            details: None,
         },
     );
 
@@ -441,8 +441,8 @@ fn test_delete() {
     assert_eq!(
         resp.unwrap_err(),
         Error {
-            details: "404".to_string(),
-            api_error: None,
+            message: "API error: 404 Not Found".to_string(),
+            details: None,
         },
     );
 
@@ -458,8 +458,8 @@ fn test_delete() {
     assert_eq!(
         resp.unwrap_err(),
         Error {
-            details: "404".to_string(),
-            api_error: None,
+            message: "API error: 404 Not Found".to_string(),
+            details: None,
         },
     );
 }

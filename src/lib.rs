@@ -313,22 +313,22 @@ type Result<T> = result::Result<T, Error>;
 /// Error type
 #[derive(Debug, Eq, PartialEq)]
 pub struct Error {
-    pub details: String,
+    pub message: String,
     // TODO: This is pretty ugly
-    pub api_error: Option<ApiError>,
+    pub details: Option<ApiError>,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {:#?}", self.details, self.api_error)
+        write!(f, "{}: {:#?}", self.message, self.details)
     }
 }
 
 impl Error {
     fn new(msg: &str, api_error: Option<ApiError>) -> Error {
         Error {
-            details: msg.to_string(),
-            api_error,
+            message: msg.to_string(),
+            details: api_error,
         }
     }
 }
@@ -823,10 +823,11 @@ impl Client {
 
 fn check_http_error(status: reqwest::StatusCode, body: Bytes) -> Result<Bytes> {
     if status >= reqwest::StatusCode::BAD_REQUEST {
+        let message = format!("API error: {}", status);
         if body.is_empty() {
-            return Err(Error::new(status.as_str(), None));
+            return Err(Error::new(&message, None));
         };
-        return Err(Error::new(status.as_str(), serde_json::from_slice(&body)?));
+        return Err(Error::new(&message, serde_json::from_slice(&body)?));
     }
     Ok(body)
 }
@@ -864,8 +865,8 @@ mod tests {
     #[test]
     fn test_error_formatting() {
         let error = Error {
-            details: "400".to_string(),
-            api_error: Some(ApiError {
+            message: "400".to_string(),
+            details: Some(ApiError {
                 method: "POST".to_string(),
                 uri: "/instances".to_string(),
                 message: "Bad file format".to_string(),
@@ -915,8 +916,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: "expected ident at line 1 column 2".to_string(),
-                api_error: None,
+                message: "expected ident at line 1 column 2".to_string(),
+                details: None,
             },
         )
     }
@@ -936,8 +937,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: expected_err.to_string(),
-                api_error: None,
+                message: expected_err.to_string(),
+                details: None,
             },
         );
     }
@@ -950,8 +951,8 @@ mod tests {
         assert_eq!(
             orthanc_error,
             Error {
-                details: "invalid utf-8 sequence of 1 bytes from index 1".to_string(),
-                api_error: None,
+                message: "invalid utf-8 sequence of 1 bytes from index 1".to_string(),
+                details: None,
             }
         );
     }
@@ -1086,8 +1087,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: "400".to_string(),
-                api_error: Some(ApiError {
+                message: "API error: 400 Bad Request".to_string(),
+                details: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1135,8 +1136,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: "400".to_string(),
-                api_error: Some(ApiError {
+                message: "API error: 400 Bad Request".to_string(),
+                details: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1184,8 +1185,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: "400".to_string(),
-                api_error: Some(ApiError {
+                message: "API error: 400 Bad Request".to_string(),
+                details: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1233,8 +1234,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: "400".to_string(),
-                api_error: Some(ApiError {
+                message: "API error: 400 Bad Request".to_string(),
+                details: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -1269,8 +1270,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: "404".to_string(),
-                api_error: None,
+                message: "API error: 404 Not Found".to_string(),
+                details: None,
             },
         );
         assert_eq!(m.times_called(), 1);
@@ -3122,8 +3123,8 @@ mod tests {
         assert_eq!(
             resp.unwrap_err(),
             Error {
-                details: "500".to_string(),
-                api_error: None
+                message: "API error: 500 Internal Server Error".to_string(),
+                details: None
             }
         );
         assert_eq!(m.times_called(), 1);
@@ -3199,8 +3200,8 @@ mod tests {
         assert_eq!(
             res.unwrap_err(),
             Error {
-                details: "400".to_string(),
-                api_error: Some(ApiError {
+                message: "API error: 400 Bad Request".to_string(),
+                details: Some(ApiError {
                     method: "POST".to_string(),
                     uri: "/instances".to_string(),
                     message: "Bad file format".to_string(),
@@ -3222,8 +3223,8 @@ mod tests {
         assert_eq!(
             res.unwrap_err(),
             Error {
-                details: "401".to_string(),
-                api_error: None
+                message: "API error: 401 Unauthorized".to_string(),
+                details: None
             },
         );
     }
@@ -3238,8 +3239,8 @@ mod tests {
         assert_eq!(
             res.unwrap_err(),
             Error {
-                details: "expected ident at line 1 column 2".to_string(),
-                api_error: None
+                message: "expected ident at line 1 column 2".to_string(),
+                details: None
             },
         );
     }
