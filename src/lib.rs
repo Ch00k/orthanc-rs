@@ -273,12 +273,12 @@ pub struct UploadResult {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct StoreResult {
-    description: String,
-    local_aet: String,
-    remote_aet: String,
-    parent_resources: Vec<String>,
-    instances_count: u64,
-    failed_instances_count: u64,
+    pub description: String,
+    pub local_aet: String,
+    pub remote_aet: String,
+    pub parent_resources: Vec<String>,
+    pub instances_count: u64,
+    pub failed_instances_count: u64,
 }
 
 /// Result of a modification or anonymization request
