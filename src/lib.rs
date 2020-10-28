@@ -435,8 +435,15 @@ impl Client {
         request = self.add_auth(request);
         let mut resp = request.send()?;
         let status = resp.status();
+
+        // TODO: Simplify this
         if status >= reqwest::StatusCode::BAD_REQUEST {
-            return Err(Error::new(&format!("API error: {}", status), None));
+            let message = format!("API error: {}", status);
+            let body = resp.bytes()?;
+            if body.is_empty() {
+                return Err(Error::new(&message, None));
+            };
+            return Err(Error::new(&message, serde_json::from_slice(&body)?));
         }
         resp.copy_to(writer)?;
         Ok(())
@@ -463,8 +470,15 @@ impl Client {
         request = self.add_auth(request);
         let mut resp = request.send()?;
         let status = resp.status();
+
+        // TODO: Simplify this
         if status >= reqwest::StatusCode::BAD_REQUEST {
-            return Err(Error::new(&format!("API error: {}", status), None));
+            let message = format!("API error: {}", status);
+            let body = resp.bytes()?;
+            if body.is_empty() {
+                return Err(Error::new(&message, None));
+            };
+            return Err(Error::new(&message, serde_json::from_slice(&body)?));
         }
         resp.copy_to(writer)?;
         Ok(())
@@ -1096,6 +1110,27 @@ mod tests {
     }
 
     #[test]
+    fn test_get_stream() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_status(200)
+            .return_body("bar")
+            .create_on(&mock_server);
+
+        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let mut writer: Vec<u8> = vec![];
+        cl.get_stream("foo", &mut writer).unwrap();
+
+        assert_eq!(&writer, &b"bar");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
     fn test_post() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
@@ -1114,6 +1149,30 @@ mod tests {
         let resp = cl.post("foo", serde_json::json!("bar")).unwrap();
 
         assert_eq!(resp, "baz");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_post_receive_stream() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .expect_body("\"bar\"")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_header("Content-Type", "application/json")
+            .return_status(200)
+            .return_body("baz")
+            .create_on(&mock_server);
+
+        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let mut writer: Vec<u8> = vec![];
+        cl.post_receive_stream("foo", serde_json::json!("bar"), &mut writer)
+            .unwrap();
+
+        assert_eq!(&writer, &b"baz");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -1208,6 +1267,56 @@ mod tests {
     }
 
     #[test]
+    fn test_get_stream_error_response() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .return_status(400)
+            .return_body(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let mut writer: Vec<u8> = vec![];
+        let resp = cl.get_stream("foo", &mut writer);
+
+        assert_eq!(
+            resp.unwrap_err(),
+            Error {
+                message: "API error: 400 Bad Request".to_string(),
+                details: Some(ApiError {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
     fn test_post_error_response() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
@@ -1234,6 +1343,56 @@ mod tests {
 
         let cl = Client::new(url);
         let resp = cl.post("foo", serde_json::json!("bar"));
+
+        assert_eq!(
+            resp.unwrap_err(),
+            Error {
+                message: "API error: 400 Bad Request".to_string(),
+                details: Some(ApiError {
+                    method: "POST".to_string(),
+                    uri: "/instances".to_string(),
+                    message: "Bad file format".to_string(),
+                    details: Some(
+                        "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string()
+                    ),
+                    http_status: 400,
+                    http_error: "Bad Request".to_string(),
+                    orthanc_status: 15,
+                    orthanc_error: "Bad file format".to_string(),
+                },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_post_receive_stream_error_response() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .return_status(400)
+            .return_body(
+                r#"
+                    {
+                        "Details" : "Cannot parse an invalid DICOM file (size: 12 bytes)",
+                        "HttpError" : "Bad Request",
+                        "HttpStatus" : 400,
+                        "Message" : "Bad file format",
+                        "Method" : "POST",
+                        "OrthancError" : "Bad file format",
+                        "OrthancStatus" : 15,
+                        "Uri" : "/instances"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let mut writer: Vec<u8> = vec![];
+        let resp = cl.post_receive_stream("foo", serde_json::json!("bar"), &mut writer);
 
         assert_eq!(
             resp.unwrap_err(),
