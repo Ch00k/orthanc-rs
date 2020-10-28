@@ -626,7 +626,17 @@ impl Client {
 
     /// Download a patient as a collection of DICOM files
     ///
-    /// Downloaded file a ZIP archive
+    /// Accepts a mutable reference to an object, that implements a `Write` trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Streamed data is a ZIP archive
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/patient.zip").unwrap();
+    /// client().patient_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
+    /// ```
     pub fn patient_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("patients/{}/archive", id);
         self.get_stream(&path, writer)
@@ -634,7 +644,17 @@ impl Client {
 
     /// Download a study as a collection of DICOM files
     ///
-    /// Downloaded file a ZIP archive
+    /// Accepts a mutable reference to an object, that implements a `Write` trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Streamed data is a ZIP archive
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/study.zip").unwrap();
+    /// client().study_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
+    /// ```
     pub fn study_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("studies/{}/archive", id);
         self.get_stream(&path, writer)?;
@@ -643,13 +663,33 @@ impl Client {
 
     /// Download a series as a collection of DICOM files
     ///
-    /// Downloaded file a ZIP archive
+    /// Accepts a mutable reference to an object, that implements a `Write` trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Streamed data is a ZIP archive
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/series.zip").unwrap();
+    /// client().series_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
+    /// ```
     pub fn series_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("series/{}/archive", id);
         self.get_stream(&path, writer)
     }
 
     /// Download an instance as a DICOM file
+    ///
+    /// Accepts a mutable reference to an object, that implements a `Write` trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/instance.dcm").unwrap();
+    /// client().instance_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
+    /// ```
     pub fn instance_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("instances/{}/file", id);
         self.get_stream(&path, writer)
@@ -779,7 +819,15 @@ impl Client {
 
     /// Anonymize an instance
     ///
-    /// The anonymized instance is returned in the response as a DICOM file
+    /// Accepts a mutable reference to an object, that implements a `Write` trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/anonymized_instance.dcm").unwrap();
+    /// client().anonymize_instance("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", None, &mut file).unwrap();
+    /// ```
     pub fn anonymize_instance<W: Write>(
         &self,
         id: &str,
@@ -833,7 +881,20 @@ impl Client {
 
     /// Modify an instance
     ///
-    /// The modified instance is returned in the response as a DICOM file
+    /// Accepts a mutable reference to an object, that implements a `Write` trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/modified_instance.dcm").unwrap();
+    /// let modification = Modification {
+    ///     replace: None,
+    ///     remove: vec!["PatientName"],
+    ///     force: false,
+    /// };
+    /// client().modify_instance("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", modification, &mut file).unwrap();
+    /// ```
     pub fn modify_instance<W: Write>(
         &self,
         id: &str,
