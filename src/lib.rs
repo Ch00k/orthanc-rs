@@ -58,6 +58,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
+use std::io::prelude::*;
 use std::result;
 use std::str;
 
@@ -428,6 +429,19 @@ impl Client {
         check_http_error(status, body)
     }
 
+    fn get_stream<W: Write>(&self, path: &str, writer: &mut W) -> Result<()> {
+        let url = format!("{}/{}", self.server, &path);
+        let mut request = self.client.get(&url);
+        request = self.add_auth(request);
+        let mut resp = request.send()?;
+        let status = resp.status();
+        if status >= reqwest::StatusCode::BAD_REQUEST {
+            return Err(Error::new(&format!("API error: {}", status), None));
+        }
+        resp.copy_to(writer)?;
+        Ok(())
+    }
+
     fn post(&self, path: &str, data: Value) -> Result<Bytes> {
         let url = format!("{}/{}", self.server, path);
         let mut request = self.client.post(&url).json(&data);
@@ -436,6 +450,24 @@ impl Client {
         let status = resp.status();
         let body = resp.bytes()?;
         check_http_error(status, body)
+    }
+
+    fn post_receive_stream<W: Write>(
+        &self,
+        path: &str,
+        data: Value,
+        writer: &mut W,
+    ) -> Result<()> {
+        let url = format!("{}/{}", self.server, path);
+        let mut request = self.client.post(&url).json(&data);
+        request = self.add_auth(request);
+        let mut resp = request.send()?;
+        let status = resp.status();
+        if status >= reqwest::StatusCode::BAD_REQUEST {
+            return Err(Error::new(&format!("API error: {}", status), None));
+        }
+        resp.copy_to(writer)?;
+        Ok(())
     }
 
     fn post_bytes(&self, path: &str, data: &[u8]) -> Result<Bytes> {
@@ -595,31 +627,32 @@ impl Client {
     /// Download a patient as a collection of DICOM files
     ///
     /// Downloaded file a ZIP archive
-    pub fn patient_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn patient_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("patients/{}/archive", id);
-        self.get(&path)
+        self.get_stream(&path, writer)
     }
 
     /// Download a study as a collection of DICOM files
     ///
     /// Downloaded file a ZIP archive
-    pub fn study_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn study_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("studies/{}/archive", id);
-        self.get(&path)
+        self.get_stream(&path, writer)?;
+        Ok(())
     }
 
     /// Download a series as a collection of DICOM files
     ///
     /// Downloaded file a ZIP archive
-    pub fn series_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn series_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("series/{}/archive", id);
-        self.get(&path)
+        self.get_stream(&path, writer)
     }
 
     /// Download an instance as a DICOM file
-    pub fn instance_dicom(&self, id: &str) -> Result<Bytes> {
+    pub fn instance_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
         let path = format!("instances/{}/file", id);
-        self.get(&path)
+        self.get_stream(&path, writer)
     }
 
     /// Delete a patient
@@ -747,11 +780,12 @@ impl Client {
     /// Anonymize an instance
     ///
     /// The anonymized instance is returned in the response as a DICOM file
-    pub fn anonymize_instance(
+    pub fn anonymize_instance<W: Write>(
         &self,
         id: &str,
         anonymization: Option<Anonymization>,
-    ) -> Result<Bytes> {
+        writer: &mut W,
+    ) -> Result<()> {
         let data = match anonymization {
             Some(a) => a,
             // TODO: Just pass an empty object?
@@ -762,11 +796,12 @@ impl Client {
                 dicom_version: None,
             },
         };
-        let resp = self.post(
+        self.post_receive_stream(
             &format!("instances/{}/anonymize", id),
             serde_json::to_value(data)?,
+            writer,
         )?;
-        Ok(resp)
+        Ok(())
     }
 
     /// Modify a patient
@@ -799,12 +834,18 @@ impl Client {
     /// Modify an instance
     ///
     /// The modified instance is returned in the response as a DICOM file
-    pub fn modify_instance(&self, id: &str, modification: Modification) -> Result<Bytes> {
-        let resp = self.post(
+    pub fn modify_instance<W: Write>(
+        &self,
+        id: &str,
+        modification: Modification,
+        writer: &mut W,
+    ) -> Result<()> {
+        self.post_receive_stream(
             &format!("instances/{}/modify", id),
             serde_json::to_value(modification)?,
+            writer,
         )?;
-        Ok(resp)
+        Ok(())
     }
 
     /// Upload a DICOM file to Orthanc
@@ -2339,9 +2380,10 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url);
-        let resp = cl.patient_dicom("foo").unwrap();
+        let mut writer: Vec<u8> = vec![];
+        cl.patient_dicom("foo", &mut writer).unwrap();
 
-        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(&writer, &b"foobar");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -2359,9 +2401,10 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url);
-        let resp = cl.study_dicom("foo").unwrap();
+        let mut writer: Vec<u8> = vec![];
+        cl.study_dicom("foo", &mut writer).unwrap();
 
-        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(&writer, &b"foobar");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -2379,9 +2422,10 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url);
-        let resp = cl.series_dicom("foo").unwrap();
+        let mut writer: Vec<u8> = vec![];
+        cl.series_dicom("foo", &mut writer).unwrap();
 
-        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(&writer, &b"foobar");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -2399,9 +2443,10 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url);
-        let resp = cl.instance_dicom("foo").unwrap();
+        let mut writer: Vec<u8> = vec![];
+        cl.instance_dicom("foo", &mut writer).unwrap();
 
-        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(&writer, &b"foobar");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -2723,18 +2768,20 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url);
-        let resp = cl
-            .modify_instance(
-                "foo",
-                Modification {
-                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                    remove: Some(vec!["Tag2".to_string()]),
-                    force: None,
-                },
-            )
-            .unwrap();
+        let mut writer: Vec<u8> = vec![];
 
-        assert_eq!(resp, "foobar".as_bytes());
+        cl.modify_instance(
+            "foo",
+            Modification {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                remove: Some(vec!["Tag2".to_string()]),
+                force: None,
+            },
+            &mut writer,
+        )
+        .unwrap();
+
+        assert_eq!(&writer, &b"foobar");
         assert_eq!(m.times_called(), 1);
     }
 
@@ -2913,19 +2960,20 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url);
-        let resp = cl
-            .anonymize_instance(
-                "foo",
-                Some(Anonymization {
-                    replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
-                    keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
-                    keep_private_tags: None,
-                    dicom_version: None,
-                }),
-            )
-            .unwrap();
+        let mut writer: Vec<u8> = vec![];
+        cl.anonymize_instance(
+            "foo",
+            Some(Anonymization {
+                replace: Some(hashmap! {"Tag1".to_string() => "value1".to_string()}),
+                keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
+                keep_private_tags: None,
+                dicom_version: None,
+            }),
+            &mut writer,
+        )
+        .unwrap();
 
-        assert_eq!(resp, "foobar".as_bytes());
+        assert_eq!(&writer, &b"foobar");
         assert_eq!(m.times_called(), 1);
     }
 

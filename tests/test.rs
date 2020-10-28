@@ -5,8 +5,7 @@ use serde_json;
 use serde_json::{from_slice, json, Value};
 use std::env;
 use std::fs;
-use std::fs::File;
-use std::io::prelude::*;
+use std::io::BufReader;
 use std::process::Command;
 use zip;
 
@@ -314,9 +313,11 @@ fn test_instance_tag() {
 #[test]
 fn test_get_patient_dicom() {
     let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
-    let resp = client().patient_dicom(&patient.id).unwrap();
+    let mut file = fs::File::create("/tmp/patient.zip").unwrap();
+    client().patient_dicom(&patient.id, &mut file).unwrap();
 
-    let reader = std::io::Cursor::new(resp);
+    let file = fs::File::open("/tmp/patient.zip").unwrap();
+    let reader = BufReader::new(file);
     let zip = zip::ZipArchive::new(reader).unwrap();
     let mut files: Vec<&str> = zip.file_names().collect();
     files.sort();
@@ -333,9 +334,11 @@ fn test_get_patient_dicom() {
 #[test]
 fn test_get_study_dicom() {
     let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
-    let resp = client().study_dicom(&study.id).unwrap();
+    let mut file = fs::File::create("/tmp/study.zip").unwrap();
+    client().study_dicom(&study.id, &mut file).unwrap();
 
-    let reader = std::io::Cursor::new(resp);
+    let file = fs::File::open("/tmp/study.zip").unwrap();
+    let reader = BufReader::new(file);
     let zip = zip::ZipArchive::new(reader).unwrap();
     let mut files: Vec<&str> = zip.file_names().collect();
     files.sort();
@@ -352,9 +355,11 @@ fn test_get_study_dicom() {
 #[test]
 fn test_get_series_dicom() {
     let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
-    let resp = client().series_dicom(&series.id).unwrap();
+    let mut file = fs::File::create("/tmp/series.zip").unwrap();
+    client().series_dicom(&series.id, &mut file).unwrap();
 
-    let reader = std::io::Cursor::new(resp);
+    let file = fs::File::open("/tmp/series.zip").unwrap();
+    let reader = BufReader::new(file);
     let zip = zip::ZipArchive::new(reader).unwrap();
     let mut files: Vec<&str> = zip.file_names().collect();
     files.sort();
@@ -368,12 +373,9 @@ fn test_get_series_dicom() {
 #[test]
 fn test_get_intance_dicom() {
     let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
-    let resp = client().instance_dicom(&instance.id).unwrap();
-
-    let path = "/tmp/instance_dicom";
-    let mut file = File::create(path).unwrap();
-    file.write_all(&resp).unwrap();
-    assert_tag_has_value(path, "0008,0018", SOP_INSTANCE_UID);
+    let mut file = fs::File::create("/tmp/instance_dicom").unwrap();
+    client().instance_dicom(&instance.id, &mut file).unwrap();
+    assert_tag_has_value("/tmp/instance_dicom", "0008,0018", SOP_INSTANCE_UID);
 }
 
 #[test]
@@ -478,13 +480,11 @@ fn test_modify_instance() {
         remove: Some(remove),
         force: None,
     };
-    let resp = client()
-        .modify_instance(&instance.id, modification)
-        .unwrap();
-
     let path = "/tmp/modified_instance";
-    let mut file = File::create(path).unwrap();
-    file.write_all(&resp).unwrap();
+    let mut file = fs::File::create(path).unwrap();
+    client()
+        .modify_instance(&instance.id, modification, &mut file)
+        .unwrap();
 
     assert_tag_has_value(path, "0008,0005", "ISO_IR 13");
     assert_tag_has_value(path, "0008,1070", "Summer Smith");
@@ -595,13 +595,11 @@ fn test_anonymize_instance() {
         keep_private_tags: None,
         dicom_version: None,
     };
-    let resp = client()
-        .anonymize_instance(&instance.id, Some(anonymization))
-        .unwrap();
-
     let path = "/tmp/anonymized_instance";
-    let mut file = File::create(path).unwrap();
-    file.write_all(&resp).unwrap();
+    let mut file = fs::File::create(path).unwrap();
+    client()
+        .anonymize_instance(&instance.id, Some(anonymization), &mut file)
+        .unwrap();
 
     assert_tag_has_value(path, "0008,0005", "ISO_IR 13");
     assert_tag_has_value(path, "0008,1070", "Summer Smith");
@@ -616,11 +614,11 @@ fn test_anonymize_instance() {
 #[test]
 fn test_anonymize_instance_empty_body() {
     let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
-    let resp = client().anonymize_instance(&instance.id, None).unwrap();
-
     let path = "/tmp/anonymized_instance";
-    let mut file = File::create(path).unwrap();
-    file.write_all(&resp).unwrap();
+    let mut file = fs::File::create(path).unwrap();
+    client()
+        .anonymize_instance(&instance.id, None, &mut file)
+        .unwrap();
 
     assert_tag_is_empty(path, "0008,0050");
     assert_tag_is_absent(path, "0008,1030");
