@@ -52,6 +52,14 @@ let tags = client.instance_tags(instance_id);
 println!("{}", tags["PatientID"]);
 ```
 
+Download a study:
+
+```rust
+let study_id = "9357491d-427a6c94-4080b6c8-1997f4aa-af658240";
+let mut file = fs::File::create("/tmp/study.zip").unwrap();
+client.study_dicom(study_id, &mut file).unwrap();
+```
+
 Even though the operation is not very efficient, Orthanc allows uploading DICOM files over
 REST API:
 
