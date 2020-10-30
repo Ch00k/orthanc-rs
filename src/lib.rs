@@ -190,7 +190,7 @@ pub struct Instance {
     pub id: String,
     pub main_dicom_tags: HashMap<String, String>,
     pub parent_series: String,
-    pub index_in_series: u32,
+    pub index_in_series: Option<u32>,
     pub file_uuid: String,
     pub file_size: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2123,7 +2123,6 @@ mod tests {
                             "FileSize": 381642,
                             "FileUuid": "86bbad65-2c98-4cb0-bf77-0ef0243410a4",
                             "ID": "286a251e-46571bd6-0e14ab9a-1baadddc-d0146ea0",
-                            "IndexInSeries": 75,
                             "MainDicomTags": {
                                 "ImageOrientationPatient": "-1\\0\\0\\0\\1\\0",
                                 "ImagePositionPatient": "-17\\42\\14",
@@ -2158,7 +2157,7 @@ mod tests {
                     },
                     parent_series: "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03"
                         .to_string(),
-                    index_in_series: 13,
+                    index_in_series: Some(13),
                     file_uuid: "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e".to_string(),
                     file_size: 139402,
                     modified_from: Some(
@@ -2179,7 +2178,7 @@ mod tests {
                     },
                     parent_series: "a240e0d7-538699a0-7464bb4b-a906f72a-fa3a32c7"
                         .to_string(),
-                    index_in_series: 75,
+                    index_in_series: None,
                     file_uuid: "86bbad65-2c98-4cb0-bf77-0ef0243410a4".to_string(),
                     file_size: 381642,
                     modified_from: None,
@@ -2374,7 +2373,7 @@ mod tests {
                     "SOPInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
                 },
                 parent_series: "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03".to_string(),
-                index_in_series: 13,
+                index_in_series: Some(13),
                 file_uuid: "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e".to_string(),
                 file_size: 139402,
                 modified_from: Some(
@@ -3621,7 +3620,7 @@ mod tests {
                 "SOPInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
             },
             parent_series: "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03".to_string(),
-            index_in_series: 13,
+            index_in_series: Some(13),
             file_uuid: "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e".to_string(),
             file_size: 139402,
             modified_from: Some("22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()),
