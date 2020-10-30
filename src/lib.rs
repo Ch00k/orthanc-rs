@@ -69,6 +69,7 @@ use std::fmt;
 use std::io::prelude::*;
 use std::result;
 use std::str;
+use std::time;
 
 /// Orthanc entity types.
 ///
@@ -397,11 +398,16 @@ impl Client {
     /// let client = Client::new("http://localhost:8042".to_string());
     /// ```
     pub fn new(server: String) -> Client {
+        let client = reqwest::blocking::ClientBuilder::new()
+            .timeout(time::Duration::from_secs(600))
+            .build()
+            // TODO: Should we be catching the error here?
+            .unwrap();
         Client {
             server,
             username: None,
             password: None,
-            client: reqwest::blocking::Client::new(),
+            client,
         }
     }
 
