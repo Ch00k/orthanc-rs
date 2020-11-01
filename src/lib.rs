@@ -6,7 +6,7 @@
 //!
 //! ```ini
 //! [dependencies]
-//! orthanc = "0.2.1"
+//! orthanc = "0.3.1"
 //! ```
 //!
 //! ## Usage
