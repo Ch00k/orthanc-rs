@@ -9,7 +9,7 @@ homepage = "https://github.com/Ch00k/orthanc-rs"
 keywords = ["api", "orthanc", "rest", "client", "dicom"]
 categories = ["api-bindings"]
 readme = "README.md"
-license = "WTFPL"
+license = "Unlicense"
 autotests = false
 
 [dependencies]
