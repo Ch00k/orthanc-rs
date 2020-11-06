@@ -5,3 +5,4 @@ pre-release-replacements = [
 ]
 pre-release-hook = "scripts/update-versions.sh"
 tag-name = "{{version}}"
+no-dev-version = true
