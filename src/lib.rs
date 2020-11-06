@@ -224,6 +224,9 @@ pub struct Anonymization {
     #[serde(rename(serialize = "DicomVersion"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dicom_version: Option<String>,
+    #[serde(rename(serialize = "Force"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub force: Option<bool>,
 }
 
 /// Modification request body
@@ -794,6 +797,7 @@ impl Client {
                 keep: None,
                 keep_private_tags: None,
                 dicom_version: None,
+                force: None,
             },
         };
         let resp = self.post(
@@ -870,6 +874,7 @@ impl Client {
                 keep: None,
                 keep_private_tags: None,
                 dicom_version: None,
+                force: None,
             },
         };
         self.post_receive_stream(
@@ -2793,6 +2798,7 @@ mod tests {
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                 keep_private_tags: None,
                 dicom_version: None,
+                force: None,
             })
             .return_status(200)
             .return_body(
@@ -2817,6 +2823,7 @@ mod tests {
                     keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                     keep_private_tags: None,
                     dicom_version: None,
+                    force: None,
                 }),
             )
             .unwrap();
@@ -3031,6 +3038,7 @@ mod tests {
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                 keep_private_tags: None,
                 dicom_version: None,
+                force: None,
             })
             .return_status(200)
             .return_body(
@@ -3054,6 +3062,7 @@ mod tests {
                     keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                     keep_private_tags: None,
                     dicom_version: None,
+                    force: None,
                 }),
             )
             .unwrap();
@@ -3083,6 +3092,7 @@ mod tests {
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                 keep_private_tags: Some(true),
                 dicom_version: None,
+                force: None,
             })
             .return_status(200)
             .return_body(
@@ -3106,6 +3116,7 @@ mod tests {
                     keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                     keep_private_tags: Some(true),
                     dicom_version: None,
+                    force: None,
                 }),
             )
             .unwrap();
@@ -3135,6 +3146,7 @@ mod tests {
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                 keep_private_tags: Some(false),
                 dicom_version: None,
+                force: None,
             })
             .return_status(200)
             .return_body(
@@ -3158,6 +3170,7 @@ mod tests {
                     keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                     keep_private_tags: Some(false),
                     dicom_version: None,
+                    force: None,
                 }),
             )
             .unwrap();
@@ -3187,6 +3200,7 @@ mod tests {
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                 keep_private_tags: None,
                 dicom_version: None,
+                force: None,
             })
             .return_status(200)
             .return_body("foobar")
@@ -3201,6 +3215,7 @@ mod tests {
                 keep: Some(vec!["Tag2".to_string(), "Tag3".to_string()]),
                 keep_private_tags: None,
                 dicom_version: None,
+                force: None,
             }),
             &mut writer,
         )
@@ -3682,7 +3697,8 @@ mod tests {
                 },
                 "keep": ["Baz", "Qux"],
                 "keep_private_tags": true,
-                "dicom_version": "42.17"
+                "dicom_version": "42.17",
+                "force": true
             }
         "#;
         let a1: Anonymization = serde_json::from_str(json).unwrap();
@@ -3695,6 +3711,7 @@ mod tests {
                 keep: Some(vec!["Baz".to_string(), "Qux".to_string()]),
                 keep_private_tags: Some(true),
                 dicom_version: Some("42.17".to_string()),
+                force: Some(true)
             }
         );
         let a2: Anonymization = serde_json::from_str("{}").unwrap();
@@ -3704,7 +3721,8 @@ mod tests {
                 replace: None,
                 keep: None,
                 keep_private_tags: None,
-                dicom_version: None
+                dicom_version: None,
+                force: None
             }
         );
     }
