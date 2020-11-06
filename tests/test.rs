@@ -554,13 +554,49 @@ fn test_modify_study() {
 fn test_modify_patient() {
     let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
     let tags = patient.main_dicom_tags;
-    assert_ne!(tags["PatientID"], "42");
-    assert_ne!(tags["PatientName"], "Summer Smith");
+    assert_eq!(tags["PatientID"], "patient_2");
+    assert_eq!(tags["PatientName"], "Patient 2");
+    assert_eq!(tags["PatientBirthDate"], "19790101");
     assert!(tags.contains_key("PatientSex"));
 
     let replace = hashmap! {
-        "PatientID".to_string() => "42".to_string(),
-        "PatientName".to_string() => "Summer Smith".to_string()
+        "PatientID".to_string() => "gazorpazorp".to_string(),
+        "PatientName".to_string() => "Summer Smith".to_string(),
+        "PatientBirthDate".to_string() => "20330303".to_string(),
+    };
+    let remove = vec!["PatientSex".to_string()];
+    let modification = Modification {
+        replace: Some(replace),
+        remove: Some(remove),
+        force: Some(true),
+    };
+    let resp = client().modify_patient(&patient.id, modification).unwrap();
+    println!("{:#?}", resp);
+    let modified_patient = client().patient(&resp.id).unwrap();
+    let modified_tags = modified_patient.main_dicom_tags;
+
+    assert_eq!(modified_tags["PatientID"], "gazorpazorp");
+    assert_eq!(modified_tags["PatientName"], "Summer Smith");
+    assert_eq!(modified_tags["PatientBirthDate"], "20330303");
+    assert!(!modified_tags.contains_key("PatientSex"));
+}
+
+#[test]
+fn test_modify_patient_keep_patient_id() {
+    // This is a feature (or a bug?) ot Orthanc
+    // If the PatientID stays the same, the patient is _not_ modified,
+    // even if `replace` and `remove` request modifications.
+
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let tags = patient.main_dicom_tags;
+    assert_eq!(tags["PatientName"], "Patient 2");
+    assert_eq!(tags["PatientBirthDate"], "19790101");
+    assert!(tags.contains_key("PatientSex"));
+
+    let replace = hashmap! {
+        "PatientID".to_string() => PATIENT_ID.to_string(),
+        "PatientName".to_string() => "Summer Smith".to_string(),
+        "PatientBirthDate".to_string() => "20330303".to_string(),
     };
     let remove = vec!["PatientSex".to_string()];
     let modification = Modification {
@@ -572,9 +608,77 @@ fn test_modify_patient() {
     let modified_patient = client().patient(&resp.id).unwrap();
     let modified_tags = modified_patient.main_dicom_tags;
 
-    assert_eq!(modified_tags["PatientID"], "42");
-    assert_eq!(modified_tags["PatientName"], "Summer Smith");
-    assert!(!modified_tags.contains_key("PatientSex"));
+    assert_eq!(modified_tags["PatientID"], PATIENT_ID);
+    assert_eq!(modified_tags["PatientName"], "Patient 2");
+    assert_eq!(modified_tags["PatientBirthDate"], "19790101");
+    assert!(modified_tags.contains_key("PatientSex"));
+}
+
+#[test]
+fn test_modify_without_patient_id() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let replace = hashmap! {
+        "PatientSex".to_string() => "F".to_string(),
+    };
+    let modification = Modification {
+        replace: Some(replace),
+        remove: None,
+        force: None,
+    };
+    let resp = client().modify_patient(&patient.id, modification);
+
+    assert_eq!(
+        resp.unwrap_err(),
+        Error {
+            message: "API error: 400 Bad Request".to_string(),
+            details: Some(ApiError {
+                method: "POST".to_string(),
+                uri: format!("/patients/{}/modify", &patient.id).to_string(),
+                message: "Bad request".to_string(),
+                details: Some(
+                    "When modifying a patient, her PatientID is required to be modified"
+                        .to_string()
+                ),
+                http_status: 400,
+                http_error: "Bad Request".to_string(),
+                orthanc_status: 8,
+                orthanc_error: "Bad request".to_string(),
+            },),
+        },
+    );
+}
+
+#[test]
+fn test_modify_patient_id_without_force() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let replace = hashmap! {
+        "PatientID".to_string() => "C137".to_string(),
+    };
+    let modification = Modification {
+        replace: Some(replace),
+        remove: None,
+        force: None,
+    };
+    let resp = client().modify_patient(&patient.id, modification);
+
+    assert_eq!(
+        resp.unwrap_err(),
+        Error {
+            message: "API error: 400 Bad Request".to_string(),
+            details: Some(ApiError {
+                method: "POST".to_string(),
+                uri: format!("/patients/{}/modify", &patient.id).to_string(),
+                message: "Bad request".to_string(),
+                details: Some(
+                    "Marking tag \"PatientID\" as to be replaced requires the \"Force\" option to be set to true".to_string()
+                ),
+                http_status: 400,
+                http_error: "Bad Request".to_string(),
+                orthanc_status: 8,
+                orthanc_error: "Bad request".to_string(),
+            },),
+        },
+    );
 }
 
 #[test]
@@ -594,6 +698,7 @@ fn test_anonymize_instance() {
         keep: Some(keep),
         keep_private_tags: None,
         dicom_version: None,
+        force: None,
     };
     let path = "/tmp/anonymized_instance";
     let mut file = fs::File::create(path).unwrap();
@@ -647,6 +752,7 @@ fn test_anonymize_series() {
         keep: Some(keep),
         keep_private_tags: None,
         dicom_version: None,
+        force: None,
     };
     let resp = client()
         .anonymize_series(&series.id, Some(anonymization))
@@ -708,6 +814,7 @@ fn test_anonymize_study() {
         keep: Some(keep),
         keep_private_tags: None,
         dicom_version: None,
+        force: None,
     };
     let resp = client()
         .anonymize_study(&study.id, Some(anonymization))
@@ -762,7 +869,7 @@ fn test_anonymize_patient() {
 
     let replace = hashmap! {
         "SpecificCharacterSet".to_string() => "ISO_IR 13".to_string(),
-        "OperatorsName".to_string() => "Summer Smith".to_string()
+        "OperatorsName".to_string() => "Summer Smith".to_string(),
     };
     let keep = vec![
         "AccessionNumber".to_string(),
@@ -773,6 +880,7 @@ fn test_anonymize_patient() {
         keep: Some(keep),
         keep_private_tags: None,
         dicom_version: None,
+        force: None,
     };
     let resp = client()
         .anonymize_patient(&patient.id, Some(anonymization))
@@ -814,6 +922,68 @@ fn test_anonymize_patient_empty_body() {
 
     assert_eq!(tags["AccessionNumber"], "");
     assert_eq!(tags["StudyID"], "");
+}
+
+#[test]
+fn test_anonymize_without_force() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let replace = hashmap! {
+        "PatientID".to_string() => "C137".to_string(),
+    };
+    let anonymization = Anonymization {
+        replace: Some(replace),
+        keep: None,
+        keep_private_tags: None,
+        dicom_version: None,
+        force: None,
+    };
+    let resp = client().anonymize_patient(&patient.id, Some(anonymization));
+
+    assert_eq!(
+        resp.unwrap_err(),
+        Error {
+            message: "API error: 400 Bad Request".to_string(),
+            details: Some(ApiError {
+                method: "POST".to_string(),
+                uri: format!("/patients/{}/anonymize", &patient.id).to_string(),
+                message: "Bad request".to_string(),
+                details: Some(
+                    "Marking tag \"PatientID\" as to be replaced requires the \"Force\" option to be set to true".to_string()
+                ),
+                http_status: 400,
+                http_error: "Bad Request".to_string(),
+                orthanc_status: 8,
+                orthanc_error: "Bad request".to_string(),
+            },),
+        },
+    );
+}
+
+#[test]
+fn test_anonymize_with_force() {
+    let patient = find_patient_by_patient_id(PATIENT_ID).unwrap();
+    let replace = hashmap! {
+        "PatientID".to_string() => "C137".to_string(),
+    };
+    let anonymization = Anonymization {
+        replace: Some(replace),
+        keep: None,
+        keep_private_tags: None,
+        dicom_version: None,
+        force: Some(true),
+    };
+    let resp = client()
+        .anonymize_patient(&patient.id, Some(anonymization))
+        .unwrap();
+
+    let modified_patient = client().patient(&resp.id).unwrap();
+    let modified_study = client().study(&modified_patient.studies[0]).unwrap();
+    let modified_series = client().series(&modified_study.series[0]).unwrap();
+    let tags = client()
+        .instance_tags(&modified_series.instances[0])
+        .unwrap();
+
+    assert_eq!(tags["PatientID"], "C137");
 }
 
 #[test]
