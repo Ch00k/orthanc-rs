@@ -14,7 +14,7 @@ To use the crate, add the dependency to your `Cargo.toml`:
 
 ```ini
 [dependencies]
-orthanc = "0.3.0"
+orthanc = "0.4.0"
 ```
 
 ## Usage

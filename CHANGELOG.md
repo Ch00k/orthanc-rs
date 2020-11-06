@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.3.0...HEAD) - ReleaseDate
+## [0.4.0](https://github.com/Ch00k/orthanc-rs/compare/0.3.0...0.4.0) - 2020-11-06
 
 **Fixes and improvements**
 
