@@ -2,12 +2,12 @@ use dicom_object::{open_file, Error as DicomError};
 use maplit::hashmap;
 use orthanc::*;
 use regex::Regex;
+use reqwest;
 use serde_json;
-use serde_json::{from_slice, json, Value};
+use serde_json::{from_str, json, Value};
 use std::env;
 use std::fs;
 use std::io::BufReader;
-use std::process::Command;
 use zip;
 
 const SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.3724.2011072815265975004";
@@ -84,18 +84,18 @@ fn find_patient_by_patient_id(patient_id: &str) -> Option<Patient> {
     return None;
 }
 
-fn run_curl(url: &str) -> Vec<u8> {
-    Command::new("curl")
-        .arg("--user")
-        .arg(format!(
-            "{}:{}",
+fn get(url: &str) -> String {
+    let client = reqwest::blocking::ClientBuilder::new().build().unwrap();
+    client
+        .get(url)
+        .basic_auth(
             env::var("ORC_ORTHANC_USERNAME").unwrap(),
-            env::var("ORC_ORTHANC_PASSWORD").unwrap()
-        ))
-        .arg(url)
-        .output()
+            Some(env::var("ORC_ORTHANC_PASSWORD").unwrap()),
+        )
+        .send()
         .unwrap()
-        .stdout
+        .text()
+        .unwrap()
 }
 
 // TODO: Figure out how to not use `trim` everywhere (element_by_name apppends trailing whitespace)
@@ -148,7 +148,7 @@ fn assert_tag_is_absent(path: &str, tag_id: &str) {
 }
 
 fn expected_response(path: &str) -> Value {
-    from_slice(&run_curl(&format!(
+    from_str(&get(&format!(
         "{}/{}",
         env::var("ORC_ORTHANC_ADDRESS").unwrap(),
         path
