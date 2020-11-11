@@ -1,3 +1,4 @@
+use dicom_object::{open_file, Error as DicomError};
 use maplit::hashmap;
 use orthanc::*;
 use regex::Regex;
@@ -17,9 +18,8 @@ const PATIENT_ID: &str = "patient_2";
 
 const UPLOAD_INSTANCE_FILE_PATH: &str = "upload";
 
-const DCMDUMP_LINE_PATTERN: &str = r"\s*\(\d{4},\d{4}\)\s+[A-Z]{2}\s+([\[\(].*[\]\)])\s+.*";
 const DEIDENTIFICATION_TAG_PATTERN: &str =
-    r"\[Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile\]";
+    r"Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile";
 
 fn client() -> Client {
     Client::new(env::var("ORC_ORTHANC_ADDRESS").unwrap()).auth(
@@ -98,55 +98,53 @@ fn run_curl(url: &str) -> Vec<u8> {
         .stdout
 }
 
-fn dcmdump_line_pattern() -> Regex {
-    Regex::new(DCMDUMP_LINE_PATTERN).unwrap()
-}
-
-fn run_dcmdump(path: &str, tag_id: &str) -> String {
-    let output = Command::new("dcmdump")
-        .arg("--search")
-        .arg(tag_id)
-        .arg(path)
-        .output()
-        .unwrap()
-        .stdout;
-    String::from_utf8(output).unwrap()
-}
-
+// TODO: Figure out how to not use `trim` everywhere (element_by_name apppends trailing whitespace)
 fn assert_tag_has_value(path: &str, tag_id: &str, value: &str) {
-    let dcmdump_out = run_dcmdump(path, tag_id);
-    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
-    assert_eq!(groups.get(1).unwrap().as_str(), format!("[{}]", value));
+    let obj = open_file(path).unwrap();
+    assert_eq!(
+        obj.element_by_name(tag_id)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .trim(),
+        value
+    );
 }
 
 fn assert_tag_value_contains(path: &str, tag_id: &str, substring: &str) {
-    let dcmdump_out = run_dcmdump(path, tag_id);
-    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
-    assert!(groups
-        .get(1)
+    let obj = open_file(path).unwrap();
+    assert!(obj
+        .element_by_name(tag_id)
         .unwrap()
-        .as_str()
-        .to_string()
+        .to_str()
+        .unwrap()
+        .trim()
         .contains(substring));
 }
 
 fn assert_tag_value_matches(path: &str, tag_id: &str, pattern: &str) {
     let re = Regex::new(pattern).unwrap();
-    let dcmdump_out = run_dcmdump(path, tag_id);
-    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
-    let tag_value = groups.get(1).unwrap().as_str();
-    assert!(re.is_match(tag_value));
+    let obj = open_file(path).unwrap();
+    let tag_value = obj.element_by_name(tag_id).unwrap().to_str().unwrap();
+    assert!(re.is_match(&tag_value.trim()));
 }
 
 fn assert_tag_is_empty(path: &str, tag_id: &str) {
-    let dcmdump_out = run_dcmdump(path, tag_id);
-    let groups = dcmdump_line_pattern().captures(&dcmdump_out).unwrap();
-    assert_eq!(groups.get(1).unwrap().as_str(), "(no value available)");
+    let obj = open_file(path).unwrap();
+    assert_eq!(
+        obj.element_by_name(tag_id)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .trim(),
+        ""
+    );
 }
 
 fn assert_tag_is_absent(path: &str, tag_id: &str) {
-    let dcmdump_out = run_dcmdump(path, tag_id);
-    assert_eq!(dcmdump_out, "");
+    let obj = open_file(path).unwrap();
+    let res = obj.element_by_name(tag_id).unwrap_err();
+    assert!(matches!(res, DicomError::NoSuchDataElementAlias{..}));
 }
 
 fn expected_response(path: &str) -> Value {
@@ -375,7 +373,8 @@ fn test_get_intance_dicom() {
     let instance = find_instance_by_sop_instance_uid(SOP_INSTANCE_UID).unwrap();
     let mut file = fs::File::create("/tmp/instance_dicom").unwrap();
     client().instance_dicom(&instance.id, &mut file).unwrap();
-    assert_tag_has_value("/tmp/instance_dicom", "0008,0018", SOP_INSTANCE_UID);
+    // TODO: dicom_object element_by_name returns the value with some trailing characters
+    assert_tag_value_contains("/tmp/instance_dicom", "SOPInstanceUID", SOP_INSTANCE_UID);
 }
 
 #[test]
@@ -486,10 +485,10 @@ fn test_modify_instance() {
         .modify_instance(&instance.id, modification, &mut file)
         .unwrap();
 
-    assert_tag_has_value(path, "0008,0005", "ISO_IR 13");
-    assert_tag_has_value(path, "0008,1070", "Summer Smith");
-    assert_tag_is_absent(path, "0008,0031");
-    assert_tag_is_absent(path, "0008,0032");
+    assert_tag_has_value(path, "SpecificCharacterSet", "ISO_IR 13");
+    assert_tag_has_value(path, "OperatorsName", "Summer Smith");
+    assert_tag_is_absent(path, "SeriesTime");
+    assert_tag_is_absent(path, "AcquisitionTime");
 }
 
 #[test]
@@ -571,7 +570,6 @@ fn test_modify_patient() {
         force: Some(true),
     };
     let resp = client().modify_patient(&patient.id, modification).unwrap();
-    println!("{:#?}", resp);
     let modified_patient = client().patient(&resp.id).unwrap();
     let modified_tags = modified_patient.main_dicom_tags;
 
@@ -706,11 +704,11 @@ fn test_anonymize_instance() {
         .anonymize_instance(&instance.id, Some(anonymization), &mut file)
         .unwrap();
 
-    assert_tag_has_value(path, "0008,0005", "ISO_IR 13");
-    assert_tag_has_value(path, "0008,1070", "Summer Smith");
-    assert_tag_has_value(path, "0008,0050", "REMOVED");
-    assert_tag_has_value(path, "0008,1030", "Study 1");
-    assert_tag_value_contains(path, "0010,0010", "Anonymized");
+    assert_tag_has_value(path, "SpecificCharacterSet", "ISO_IR 13");
+    assert_tag_has_value(path, "OperatorsName", "Summer Smith");
+    assert_tag_has_value(path, "AccessionNumber", "REMOVED");
+    assert_tag_has_value(path, "StudyDescription", "Study 1");
+    assert_tag_value_contains(path, "PatientName", "Anonymized");
 
     // When anonymization is customized, Orthanc does not add the 0012,0063 tag. A bug?
     //assert_tag_value_matches(path, "0012,0063", DEIDENTIFICATION_TAG_PATTERN);
@@ -725,10 +723,10 @@ fn test_anonymize_instance_empty_body() {
         .anonymize_instance(&instance.id, None, &mut file)
         .unwrap();
 
-    assert_tag_is_empty(path, "0008,0050");
-    assert_tag_is_absent(path, "0008,1030");
-    assert_tag_value_contains(path, "0010,0010", "Anonymized");
-    assert_tag_value_matches(path, "0012,0063", DEIDENTIFICATION_TAG_PATTERN);
+    assert_tag_is_empty(path, "AccessionNumber");
+    assert_tag_is_absent(path, "StudyDescription");
+    assert_tag_value_contains(path, "PatientName", "Anonymized");
+    assert_tag_value_matches(path, "DeidentificationMethod", DEIDENTIFICATION_TAG_PATTERN);
 }
 
 #[test]
