@@ -21,7 +21,8 @@ jobs:
 
       - name: run tests
         run: |
-          cargo install cargo-tarpaulin && \
+          # Pinning to 0.16.0 until https://github.com/xd009642/tarpaulin/issues/618 is fixed
+          cargo install --version 0.16.0 cargo-tarpaulin && \
           cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
       - name: upload coverage
