@@ -1044,3 +1044,97 @@ fn test_get_dicom_tag_value_instance() {
         None
     );
 }
+
+#[test]
+fn test_create_modify_delete_modality() {
+    // Create
+    let modality = Modality {
+        aet: "foobar".to_string(),
+        host: "1.2.3.4".to_string(),
+        port: 4217,
+        manufacturer: None,
+        allow_c_echo: None,
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: None,
+        allow_c_store: None,
+        allow_n_action: None,
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    assert_eq!(client().create_modality("bazqux", modality).unwrap(), ());
+    let mut created: bool = false;
+    for (m_name, m_config) in client().modalities_expanded().unwrap() {
+        if m_name == "bazqux" {
+            assert_eq!(
+                m_config,
+                Modality {
+                    aet: "foobar".to_string(),
+                    host: "1.2.3.4".to_string(),
+                    port: 4217,
+                    manufacturer: Some("Generic".to_string()),
+                    allow_c_echo: Some(true),
+                    allow_c_find: Some(true),
+                    allow_c_get: Some(true),
+                    allow_c_move: Some(true),
+                    allow_c_store: Some(true),
+                    allow_n_action: Some(true),
+                    allow_n_event_report: Some(true),
+                    allow_transcoding: Some(true),
+                }
+            );
+            created = true;
+        }
+    }
+    if !created {
+        panic!("Modality not created");
+    };
+
+    // Modify
+    let modality = Modality {
+        aet: "quuxquuz".to_string(),
+        host: "4.3.2.1".to_string(),
+        port: 4217,
+        manufacturer: Some("GE".to_string()),
+        allow_c_echo: Some(false),
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: Some(false),
+        allow_c_store: None,
+        allow_n_action: Some(true),
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    assert_eq!(client().modify_modality("bazqux", modality).unwrap(), ());
+    let mut modified: bool = false;
+    for (m_name, m_config) in client().modalities_expanded().unwrap() {
+        if m_name == "bazqux" {
+            assert_eq!(
+                m_config,
+                Modality {
+                    aet: "quuxquuz".to_string(),
+                    host: "4.3.2.1".to_string(),
+                    port: 4217,
+                    manufacturer: Some("GE".to_string()),
+                    allow_c_echo: Some(false),
+                    allow_c_find: Some(true),
+                    allow_c_get: Some(true),
+                    allow_c_move: Some(false),
+                    allow_c_store: Some(true),
+                    allow_n_action: Some(true),
+                    allow_n_event_report: Some(true),
+                    allow_transcoding: Some(true),
+                }
+            );
+            modified = true;
+        }
+    }
+    if !modified {
+        panic!("Modality not modified");
+    }
+
+    // Delete
+    assert_eq!(client().delete_modality("bazqux").unwrap(), ());
+    let modalities = client().modalities_expanded().unwrap();
+    assert!(!modalities.contains_key("bazqux"));
+}

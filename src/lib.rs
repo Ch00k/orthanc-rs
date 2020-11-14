@@ -90,16 +90,31 @@ pub struct Modality {
     #[serde(rename = "AET")]
     pub aet: String,
     pub host: String,
-    pub port: u32,
-    pub manufacturer: String,
-    pub allow_echo: bool,
-    pub allow_find: bool,
-    pub allow_get: bool,
-    pub allow_move: bool,
-    pub allow_store: bool,
-    pub allow_n_action: bool,
-    pub allow_event_report: bool,
-    pub allow_transcoding: bool,
+    pub port: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manufacturer: Option<String>,
+    #[serde(rename = "AllowEcho")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_c_echo: Option<bool>,
+    #[serde(rename = "AllowFind")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_c_find: Option<bool>,
+    #[serde(rename = "AllowGet")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_c_get: Option<bool>,
+    #[serde(rename = "AllowMove")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_c_move: Option<bool>,
+    #[serde(rename = "AllowStore")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_c_store: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_n_action: Option<bool>,
+    #[serde(rename = "AllowEventReport")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_n_event_report: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_transcoding: Option<bool>,
 }
 
 /// Patient
@@ -505,6 +520,16 @@ impl Client {
         let url = format!("{}/{}", self.server, path);
         // TODO: .to_vec() here is probably not a good idea?
         let mut request = self.client.post(&url).body(data.to_vec());
+        request = self.add_auth(request);
+        let resp = request.send()?;
+        let status = resp.status();
+        let body = resp.bytes()?;
+        check_http_error(status, body)
+    }
+
+    fn put(&self, path: &str, data: Value) -> Result<Bytes> {
+        let url = format!("{}/{}", self.server, path);
+        let mut request = self.client.put(&url).json(&data);
         request = self.add_auth(request);
         let resp = request.send()?;
         let status = resp.status();
@@ -953,6 +978,30 @@ impl Client {
         let resp = self.post_bytes("instances", data)?;
         let json: UploadResult = serde_json::from_slice(&resp)?;
         Ok(json)
+    }
+
+    // TODO: The following two methods are exactly the same
+    /// Create a modality
+    pub fn create_modality(&self, name: &str, modality: Modality) -> Result<()> {
+        self.put(
+            &format!("modalities/{}", name),
+            serde_json::to_value(modality)?,
+        )
+        .map(|_| ())
+    }
+
+    /// Modify a modality
+    pub fn modify_modality(&self, name: &str, modality: Modality) -> Result<()> {
+        self.put(
+            &format!("modalities/{}", name),
+            serde_json::to_value(modality)?,
+        )
+        .map(|_| ())
+    }
+
+    /// Delete a modality
+    pub fn delete_modality(&self, name: &str) -> Result<()> {
+        self.delete(&format!("modalities/{}", name)).map(|_| ())
     }
 }
 
@@ -1714,29 +1763,29 @@ mod tests {
                     aet: "FOO".to_string(),
                     host: "localhost".to_string(),
                     port: 11114,
-                    manufacturer: "Generic".to_string(),
-                    allow_echo: true,
-                    allow_find: true,
-                    allow_get: true,
-                    allow_move: true,
-                    allow_store: true,
-                    allow_n_action: false,
-                    allow_event_report: false,
-                    allow_transcoding: false,
+                    manufacturer: Some("Generic".to_string()),
+                    allow_c_echo: Some(true),
+                    allow_c_find: Some(true),
+                    allow_c_get: Some(true),
+                    allow_c_move: Some(true),
+                    allow_c_store: Some(true),
+                    allow_n_action: Some(false),
+                    allow_n_event_report: Some(false),
+                    allow_transcoding: Some(false),
                 },
                 "bar".to_string() => Modality {
                     aet: "BAR".to_string(),
                     host: "remotehost".to_string(),
                     port: 11113,
-                    manufacturer: "Generic".to_string(),
-                    allow_echo: true,
-                    allow_find: true,
-                    allow_get: true,
-                    allow_move: true,
-                    allow_store: true,
-                    allow_n_action: false,
-                    allow_event_report: false,
-                    allow_transcoding: false,
+                    manufacturer: Some("Generic".to_string()),
+                    allow_c_echo: Some(true),
+                    allow_c_find: Some(true),
+                    allow_c_get: Some(true),
+                    allow_c_move: Some(true),
+                    allow_c_store: Some(true),
+                    allow_n_action: Some(false),
+                    allow_n_event_report: Some(false),
+                    allow_transcoding: Some(false),
                 }
             },
         );
@@ -3464,6 +3513,121 @@ mod tests {
                 parent_series: "baz".to_string(),
             }
         );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    // The following 2 tests are exactly the same except one calls `create_modality`,
+    // the other one calls `modify_modality`.
+    #[test]
+    fn test_create_modality() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::PUT)
+            .expect_path("/modalities/bazqux")
+            .expect_json_body(&Modality {
+                aet: "foobar".to_string(),
+                host: "localhost".to_string(),
+                port: 11113,
+                manufacturer: None,
+                allow_c_echo: None,
+                allow_c_find: None,
+                allow_c_get: None,
+                allow_c_move: None,
+                allow_c_store: None,
+                allow_n_action: None,
+                allow_n_event_report: None,
+                allow_transcoding: None,
+            })
+            .return_status(200)
+            .return_body("")
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let modality = Modality {
+            aet: "foobar".to_string(),
+            host: "localhost".to_string(),
+            port: 11113,
+            manufacturer: None,
+            allow_c_echo: None,
+            allow_c_find: None,
+            allow_c_get: None,
+            allow_c_move: None,
+            allow_c_store: None,
+            allow_n_action: None,
+            allow_n_event_report: None,
+            allow_transcoding: None,
+        };
+        let resp = cl.create_modality("bazqux", modality).unwrap();
+
+        assert_eq!(resp, ());
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_modify_modality() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::PUT)
+            .expect_path("/modalities/bazqux")
+            .expect_json_body(&Modality {
+                aet: "foobar".to_string(),
+                host: "localhost".to_string(),
+                port: 11113,
+                manufacturer: None,
+                allow_c_echo: None,
+                allow_c_find: None,
+                allow_c_get: None,
+                allow_c_move: None,
+                allow_c_store: None,
+                allow_n_action: None,
+                allow_n_event_report: None,
+                allow_transcoding: None,
+            })
+            .return_status(200)
+            .return_body("")
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let modality = Modality {
+            aet: "foobar".to_string(),
+            host: "localhost".to_string(),
+            port: 11113,
+            manufacturer: None,
+            allow_c_echo: None,
+            allow_c_find: None,
+            allow_c_get: None,
+            allow_c_move: None,
+            allow_c_store: None,
+            allow_n_action: None,
+            allow_n_event_report: None,
+            allow_transcoding: None,
+        };
+        let resp = cl.modify_modality("bazqux", modality).unwrap();
+
+        assert_eq!(resp, ());
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_delete_modality() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::DELETE)
+            .expect_path("/modalities/bazqux")
+            .return_status(200)
+            .return_body("")
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let resp = cl.delete_modality("bazqux").unwrap();
+
+        assert_eq!(resp, ());
         assert_eq!(m.times_called(), 1);
     }
 
