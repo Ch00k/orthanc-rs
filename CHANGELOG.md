@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.4.0...HEAD) - ReleaseDate
+
+**Fixes and improvements**
+
+* Added methods to create, modify and delete modalities
+  [#34](https://github.com/Ch00k/orthanc-rs/pull/34)
+
+
 ## [0.4.0](https://github.com/Ch00k/orthanc-rs/compare/0.3.0...0.4.0) - 2020-11-06
 
 **Fixes and improvements**
