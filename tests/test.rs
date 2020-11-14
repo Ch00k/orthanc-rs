@@ -1063,6 +1063,7 @@ fn test_create_modify_delete_modality() {
         allow_transcoding: None,
     };
     assert_eq!(client().create_modality("bazqux", modality).unwrap(), ());
+    let mut created: bool = false;
     for (m_name, m_config) in client().modalities_expanded().unwrap() {
         if m_name == "bazqux" {
             assert_eq!(
@@ -1082,17 +1083,19 @@ fn test_create_modify_delete_modality() {
                     allow_transcoding: Some(true),
                 }
             );
-            return;
+            created = true;
         }
-        panic!("Modality not created");
     }
+    if !created {
+        panic!("Modality not created");
+    };
 
     // Modify
     let modality = Modality {
         aet: "quuxquuz".to_string(),
         host: "4.3.2.1".to_string(),
         port: 4217,
-        manufacturer: Some("Philips".to_string()),
+        manufacturer: Some("GE".to_string()),
         allow_c_echo: Some(false),
         allow_c_find: None,
         allow_c_get: None,
@@ -1102,7 +1105,8 @@ fn test_create_modify_delete_modality() {
         allow_n_event_report: None,
         allow_transcoding: None,
     };
-    assert_eq!(client().create_modality("bazqux", modality).unwrap(), ());
+    assert_eq!(client().modify_modality("bazqux", modality).unwrap(), ());
+    let mut modified: bool = false;
     for (m_name, m_config) in client().modalities_expanded().unwrap() {
         if m_name == "bazqux" {
             assert_eq!(
@@ -1111,7 +1115,7 @@ fn test_create_modify_delete_modality() {
                     aet: "quuxquuz".to_string(),
                     host: "4.3.2.1".to_string(),
                     port: 4217,
-                    manufacturer: Some("Philips".to_string()),
+                    manufacturer: Some("GE".to_string()),
                     allow_c_echo: Some(false),
                     allow_c_find: Some(true),
                     allow_c_get: Some(true),
@@ -1122,8 +1126,10 @@ fn test_create_modify_delete_modality() {
                     allow_transcoding: Some(true),
                 }
             );
-            return;
+            modified = true;
         }
+    }
+    if !modified {
         panic!("Modality not modified");
     }
 
