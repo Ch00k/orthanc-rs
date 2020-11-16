@@ -1,3 +1,5 @@
+#![warn(missing_debug_implementations)]
+
 //! **orthanc-rs** is a client for the [REST API](https://book.orthanc-server.com/users/rest.html)
 //! of [Orthanc](https://book.orthanc-server.com/users/rest.html), an open-source, lightweight
 //! DICOM server.
@@ -402,6 +404,7 @@ impl From<str::Utf8Error> for Error {
 /// let client = Client::new("http://localhost:8042".to_string())
 ///     .auth("username".to_string(), "password".to_string());
 /// ```
+#[derive(Debug)]
 pub struct Client {
     server: String,
     username: Option<String>,
