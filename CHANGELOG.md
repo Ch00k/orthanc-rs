@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.5.0...HEAD) - ReleaseDate
+
+**Fixes and improvements**
+
+* Implemented `Debug` for `Client` type [#36](https://github.com/Ch00k/orthanc-rs/pull/36)
+
 ## [0.5.0](https://github.com/Ch00k/orthanc-rs/compare/0.4.0...0.5.0) - 2020-11-15
 
 **Fixes and improvements**
