@@ -36,11 +36,13 @@ jobs:
     name: integration_test
     services:
       orthanc:
-        image: jodogne/orthanc:1.7.1
+        image: ch00k/orthanc-nginx
         ports:
-          - 8042:8042
+          - 8888:80
+        volumes:
+          - orthanc.json:/etc/orthanc/orthanc.json
     env:
-      ORC_ORTHANC_ADDRESS: http://localhost:8042
+      ORC_ORTHANC_ADDRESS: http://localhost:8888
       ORC_ORTHANC_USERNAME: orthanc
       ORC_ORTHANC_PASSWORD: orthanc
       ORC_DATAFILES_PATH: /tmp/orc_test_data
