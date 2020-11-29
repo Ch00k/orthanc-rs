@@ -40,7 +40,7 @@ jobs:
         ports:
           - 8888:80
         volumes:
-          - orthanc.json:/etc/orthanc/orthanc.json
+          - orthanc:/etc/orthanc
     env:
       ORC_ORTHANC_ADDRESS: http://localhost:8888
       ORC_ORTHANC_USERNAME: orthanc
