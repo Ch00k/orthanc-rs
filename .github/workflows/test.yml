@@ -38,11 +38,11 @@ jobs:
       orthanc:
         image: ch00k/orthanc-nginx
         ports:
-          - 8888:80
+          - 8028:80
         volumes:
           - orthanc:/etc/orthanc
     env:
-      ORC_ORTHANC_ADDRESS: http://localhost:8888
+      ORC_ORTHANC_ADDRESS: http://localhost:8028
       ORC_ORTHANC_USERNAME: orthanc
       ORC_ORTHANC_PASSWORD: orthanc
       ORC_DATAFILES_PATH: /tmp/orc_test_data

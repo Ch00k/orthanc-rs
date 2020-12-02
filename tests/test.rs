@@ -157,6 +157,33 @@ fn expected_response(path: &str) -> Value {
 }
 
 #[test]
+fn test_no_auth() {
+    let client = Client::new(env::var("ORC_ORTHANC_ADDRESS").unwrap());
+    let resp = client.modalities();
+    assert_eq!(
+        resp.unwrap_err(),
+        Error {
+            message: "API error: 401 Unauthorized".to_string(),
+            details: None
+        }
+    );
+}
+
+#[test]
+fn test_wrong_auth() {
+    let client = Client::new(env::var("ORC_ORTHANC_ADDRESS").unwrap())
+        .auth("foo".to_string(), "bar".to_string());
+    let resp = client.modalities();
+    assert_eq!(
+        resp.unwrap_err(),
+        Error {
+            message: "API error: 401 Unauthorized".to_string(),
+            details: None
+        }
+    );
+}
+
+#[test]
 fn test_list_modalities() {
     assert_eq!(
         json!(client().modalities().unwrap()),
