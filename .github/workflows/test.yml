@@ -41,14 +41,14 @@ jobs:
           - 8028:80
         volumes:
           - orthanc:/etc/orthanc
-    dino:
-      image: ch00k/dino
-      env:
-        DINO_SCP_HOST: ${DINO_SCP_HOST}
-        DINO_SCP_PORT: ${DINO_SCP_PORT}
-        DINO_SCP_AET: ${DINO_SCP_AET}
-      ports:
-        - 5252:5252
+      dino:
+        image: ch00k/dino
+        env:
+          DINO_SCP_HOST: ${DINO_SCP_HOST}
+          DINO_SCP_PORT: ${DINO_SCP_PORT}
+          DINO_SCP_AET: ${DINO_SCP_AET}
+        ports:
+          - 5252:5252
 
     env:
       ORC_ORTHANC_ADDRESS: http://localhost:8028
