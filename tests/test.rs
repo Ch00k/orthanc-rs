@@ -1165,3 +1165,55 @@ fn test_create_modify_delete_modality() {
     let modalities = client().modalities_expanded().unwrap();
     assert!(!modalities.contains_key("bazqux"));
 }
+
+#[test]
+fn test_modality_echo() {
+    let modality = Modality {
+        aet: env::var("DINO_SCP_AET").unwrap(),
+        host: "dino".to_string(),
+        port: env::var("DINO_SCP_PORT").unwrap().parse::<i32>().unwrap(),
+        manufacturer: None,
+        allow_c_echo: None,
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: None,
+        allow_c_store: None,
+        allow_n_action: None,
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    client().create_modality("dino", modality).unwrap();
+
+    assert_eq!(client().echo("dino", None).unwrap(), ());
+}
+
+#[test]
+fn test_modality_store() {
+    let modality = Modality {
+        aet: env::var("DINO_SCP_AET").unwrap(),
+        host: "dino".to_string(),
+        port: env::var("DINO_SCP_PORT").unwrap().parse::<i32>().unwrap(),
+        manufacturer: None,
+        allow_c_echo: None,
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: None,
+        allow_c_store: None,
+        allow_n_action: None,
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    client().create_modality("dino", modality).unwrap();
+
+    assert_eq!(
+        client().store("dino", &[&first_study()]).unwrap(),
+        StoreResult {
+            description: "REST API".to_string(),
+            local_aet: "ORTHANC".to_string(),
+            remote_aet: "DINO".to_string(),
+            parent_resources: vec!(first_study()),
+            instances_count: 2,
+            failed_instances_count: 0,
+        }
+    );
+}
