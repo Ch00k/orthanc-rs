@@ -44,9 +44,9 @@ jobs:
       dino:
         image: ch00k/dino
         env:
-          DINO_SCP_HOST: ${DINO_SCP_HOST}
-          DINO_SCP_PORT: ${DINO_SCP_PORT}
-          DINO_SCP_AET: ${DINO_SCP_AET}
+          DINO_SCP_HOST: ${{env.DINO_SCP_HOST}}
+          DINO_SCP_PORT: ${{env.DINO_SCP_PORT}}
+          DINO_SCP_AET: ${{env.DINO_SCP_AET}}
         ports:
           - 5252:5252
 
