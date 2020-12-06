@@ -85,6 +85,23 @@ pub enum Entity {
     Instance,
 }
 
+/// System
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct System {
+    pub name: String,
+    pub version: String,
+    pub api_version: u8,
+    pub database_version: u8,
+    pub database_backend_plugin: Option<String>,
+    pub dicom_aet: String,
+    pub dicom_port: u16,
+    pub http_port: u16,
+    pub is_http_server_secure: bool,
+    pub plugins_enabled: bool,
+    pub storage_area_plugin: Option<String>,
+}
+
 /// Modality
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -553,6 +570,13 @@ impl Client {
     fn list(&self, entity: &str) -> Result<Vec<String>> {
         let resp = self.get(entity)?;
         let json: Vec<String> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// System information
+    pub fn system(&self) -> Result<System> {
+        let resp = self.get("system")?;
+        let json: System = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -1605,6 +1629,57 @@ mod tests {
                 message: "API error: 404 Not Found".to_string(),
                 details: None,
             },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_get_system_info() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/system")
+            .return_status(200)
+            .return_header("Content-Type", "application/json")
+            .return_body(
+                r#"
+                    {
+                        "ApiVersion": 8,
+                        "DatabaseBackendPlugin": null,
+                        "DatabaseVersion": 6,
+                        "DicomAet": "ORTHANC",
+                        "DicomPort": 4242,
+                        "HttpPort": 8042,
+                        "IsHttpServerSecure": true,
+                        "Name": "Orthanc",
+                        "PluginsEnabled": true,
+                        "StorageAreaPlugin": null,
+                        "Version": "1.8.0"
+                    }
+                "#,
+            )
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let system = cl.system().unwrap();
+
+        assert_eq!(
+            system,
+            System {
+                name: "Orthanc".to_string(),
+                version: "1.8.0".to_string(),
+                api_version: 8,
+                database_version: 6,
+                database_backend_plugin: None,
+                dicom_aet: "ORTHANC".to_string(),
+                dicom_port: 4242,
+                http_port: 8042,
+                is_http_server_secure: true,
+                plugins_enabled: true,
+                storage_area_plugin: None,
+            }
         );
         assert_eq!(m.times_called(), 1);
     }
