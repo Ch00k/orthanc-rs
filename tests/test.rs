@@ -184,6 +184,14 @@ fn test_wrong_auth() {
 }
 
 #[test]
+fn test_get_system_info() {
+    assert_eq!(
+        json!(client().system().unwrap()),
+        expected_response("system")
+    );
+}
+
+#[test]
 fn test_list_modalities() {
     assert_eq!(
         json!(client().modalities().unwrap()),

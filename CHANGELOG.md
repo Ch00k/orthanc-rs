@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.5.1...HEAD) - ReleaseDate
+
+**Fixes and improvements**
+
+* Implemented getting system info through `/system` endpoint
+  [#42](https://github.com/Ch00k/orthanc-rs/pull/42)
+
 ## [0.5.1](https://github.com/Ch00k/orthanc-rs/compare/0.5.0...0.5.1) - 2020-11-16
 
 **Fixes and improvements**
