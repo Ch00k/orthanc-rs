@@ -1082,6 +1082,13 @@ fn test_get_dicom_tag_value_instance() {
 
 #[test]
 fn test_create_modify_delete_modality() {
+    // Get system info
+    let sysinfo = client().system().unwrap();
+    let mut allow_transcoding = None;
+    if sysinfo.api_version > 6 {
+        allow_transcoding = Some(true);
+    }
+
     // Create
     let modality = Modality {
         aet: "foobar".to_string(),
@@ -1115,7 +1122,7 @@ fn test_create_modify_delete_modality() {
                     allow_c_store: Some(true),
                     allow_n_action: Some(true),
                     allow_n_event_report: Some(true),
-                    allow_transcoding: Some(true),
+                    allow_transcoding: allow_transcoding,
                 }
             );
             created = true;
@@ -1158,7 +1165,7 @@ fn test_create_modify_delete_modality() {
                     allow_c_store: Some(true),
                     allow_n_action: Some(true),
                     allow_n_event_report: Some(true),
-                    allow_transcoding: Some(true),
+                    allow_transcoding: allow_transcoding,
                 }
             );
             modified = true;

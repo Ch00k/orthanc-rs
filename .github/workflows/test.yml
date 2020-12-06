@@ -36,7 +36,7 @@ jobs:
     name: integration_test
     strategy:
       matrix:
-        orthanc: [1.7.4, 1.8.0]
+        orthanc: [1.6.1, 1.7.4, 1.8.0]
     services:
       orthanc:
         image: ch00k/orthanc-nginx:${{matrix.orthanc}}

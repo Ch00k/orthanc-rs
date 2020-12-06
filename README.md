@@ -10,6 +10,8 @@
 of [Orthanc](https://book.orthanc-server.com/users/rest.html), an open-source, lightweight
 DICOM server.
 
+Supported Orthanc versions are 1.6.x, 1.7.x, 1.8.x.
+
 To use the crate, add the dependency to your `Cargo.toml`:
 
 ```ini
