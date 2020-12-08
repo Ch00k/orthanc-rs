@@ -70,8 +70,7 @@ jobs:
 
       - name: run tests
         run: |
-          make install_tarpaulin
-          make start_orthanc
+          make populate_orthanc
           make integration_test_coverage
 
       - name: upload coverage
