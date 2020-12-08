@@ -20,10 +20,7 @@ jobs:
           toolchain: stable
 
       - name: run tests
-        run: |
-          # Pinning to 0.16.0 until https://github.com/xd009642/tarpaulin/issues/618 is fixed
-          cargo install --version 0.16.0 cargo-tarpaulin && \
-          cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
+        run: make unit_test_coverage
 
       - name: upload coverage
         uses: codecov/codecov-action@v1
@@ -73,9 +70,9 @@ jobs:
 
       - name: run tests
         run: |
-          cargo install cargo-tarpaulin && \
-          ./scripts/populate_orthanc.sh && \
-          cargo tarpaulin --test integration --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
+          make install_tarpaulin
+          make start_orthanc
+          make integration_test_coverage
 
       - name: upload coverage
         uses: codecov/codecov-action@v1
