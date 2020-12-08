@@ -4,7 +4,6 @@ services:
   orthanc:
     image: ch00k/orthanc-nginx
     ports:
-      - 4242:4242
       - 8028:80
     volumes:
       - ./orthanc:/etc/orthanc

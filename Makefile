@@ -10,11 +10,12 @@ export DINO_SCP_PORT ?= 5252
 export DINO_SCP_AET ?= DINO
 
 
-.PHONY: test clean unit_test integration_test unit_test_coverage integration_test_coverage install_tarpaulin cleanup_orthanc populate_orthanc reset_orthanc start_orthanc stop_orthanc release
+.PHONY: test clean unit_test integration_test unit_test_coverage integration_test_coverage install_tarpaulin cleanup_orthanc populate_orthanc reset_orthanc start_services stop_services release
 
 test: unit_test integration_test
 
-clean: cleanup_orthanc stop_orthanc clean
+clean: cleanup_orthanc stop_services
+	cargo clean
 
 unit_test:
 	cargo test --lib
@@ -39,11 +40,11 @@ populate_orthanc:
 
 reset_orthanc: cleanup_orthanc populate_orthanc
 
-start_orthanc:
+start_services:
 	docker-compose pull
 	docker-compose up -d
 
-stop_orthanc:
+stop_services:
 	docker-compose down
 
 release:
