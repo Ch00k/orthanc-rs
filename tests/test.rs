@@ -10,6 +10,14 @@ use std::fs;
 use std::io::BufReader;
 use zip;
 
+const DEFAULT_SERVER_ADDRESS: &str = "http://localhost:8028";
+const DEFAULT_USERNAME: &str = "orthanc";
+const DEFAULT_PASSWORD: &str = "orthanc";
+
+const DEFAULT_DINO_HOST: &str = "dino"; // docker-compose
+const DEFAULT_DINO_PORT: &str = "5252";
+const DEFAULT_DINO_AET: &str = "DINO";
+
 const SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.3724.2011072815265975004";
 const SOP_INSTANCE_UID_DELETE: &str = "1.3.46.670589.11.1.5.0.7080.2012100313435153441";
 const SERIES_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.3724.2011072815265926000";
@@ -22,9 +30,12 @@ const DEIDENTIFICATION_TAG_PATTERN: &str =
     r"Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile";
 
 fn client() -> Client {
-    Client::new(env::var("ORC_ORTHANC_ADDRESS").unwrap()).auth(
-        env::var("ORC_ORTHANC_USERNAME").unwrap(),
-        env::var("ORC_ORTHANC_PASSWORD").unwrap(),
+    Client::new(
+        env::var("ORC_ORTHANC_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.to_string()),
+    )
+    .auth(
+        env::var("ORC_ORTHANC_USERNAME").unwrap_or(DEFAULT_USERNAME.to_string()),
+        env::var("ORC_ORTHANC_PASSWORD").unwrap_or(DEFAULT_PASSWORD.to_string()),
     )
 }
 
@@ -89,8 +100,8 @@ fn get(url: &str) -> String {
     client
         .get(url)
         .basic_auth(
-            env::var("ORC_ORTHANC_USERNAME").unwrap(),
-            Some(env::var("ORC_ORTHANC_PASSWORD").unwrap()),
+            env::var("ORC_ORTHANC_USERNAME").unwrap_or(DEFAULT_USERNAME.to_string()),
+            Some(env::var("ORC_ORTHANC_PASSWORD").unwrap_or(DEFAULT_PASSWORD.to_string())),
         )
         .send()
         .unwrap()
@@ -150,7 +161,7 @@ fn assert_tag_is_absent(path: &str, tag_id: &str) {
 fn expected_response(path: &str) -> Value {
     from_str(&get(&format!(
         "{}/{}",
-        env::var("ORC_ORTHANC_ADDRESS").unwrap(),
+        env::var("ORC_ORTHANC_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.to_string()),
         path
     )))
     .unwrap()
@@ -158,7 +169,9 @@ fn expected_response(path: &str) -> Value {
 
 #[test]
 fn test_no_auth() {
-    let client = Client::new(env::var("ORC_ORTHANC_ADDRESS").unwrap());
+    let client = Client::new(
+        env::var("ORC_ORTHANC_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.to_string()),
+    );
     let resp = client.modalities();
     assert_eq!(
         resp.unwrap_err(),
@@ -171,8 +184,10 @@ fn test_no_auth() {
 
 #[test]
 fn test_wrong_auth() {
-    let client = Client::new(env::var("ORC_ORTHANC_ADDRESS").unwrap())
-        .auth("foo".to_string(), "bar".to_string());
+    let client = Client::new(
+        env::var("ORC_ORTHANC_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.to_string()),
+    )
+    .auth("foo".to_string(), "bar".to_string());
     let resp = client.modalities();
     assert_eq!(
         resp.unwrap_err(),
@@ -1023,7 +1038,7 @@ fn test_anonymize_with_force() {
 fn test_upload_dicom() {
     let data = fs::read(format!(
         "{}/{}",
-        env::var("ORC_DATAFILES_PATH").unwrap(),
+        env::var("ORC_DATAFILES_PATH").unwrap_or("./data/dicom".to_string()),
         UPLOAD_INSTANCE_FILE_PATH
     ))
     .unwrap();
@@ -1184,9 +1199,12 @@ fn test_create_modify_delete_modality() {
 #[test]
 fn test_modality_echo() {
     let modality = Modality {
-        aet: env::var("DINO_SCP_AET").unwrap(),
-        host: "dino".to_string(),
-        port: env::var("DINO_SCP_PORT").unwrap().parse::<i32>().unwrap(),
+        aet: env::var("DINO_SCP_AET").unwrap_or(DEFAULT_DINO_AET.to_string()),
+        host: DEFAULT_DINO_HOST.to_string(),
+        port: env::var("DINO_SCP_PORT")
+            .unwrap_or(DEFAULT_DINO_PORT.to_string())
+            .parse::<i32>()
+            .unwrap(),
         manufacturer: None,
         allow_c_echo: None,
         allow_c_find: None,
@@ -1205,9 +1223,12 @@ fn test_modality_echo() {
 #[test]
 fn test_modality_store() {
     let modality = Modality {
-        aet: env::var("DINO_SCP_AET").unwrap(),
-        host: "dino".to_string(),
-        port: env::var("DINO_SCP_PORT").unwrap().parse::<i32>().unwrap(),
+        aet: env::var("DINO_SCP_AET").unwrap_or(DEFAULT_DINO_AET.to_string()),
+        host: DEFAULT_DINO_HOST.to_string(),
+        port: env::var("DINO_SCP_PORT")
+            .unwrap_or(DEFAULT_DINO_PORT.to_string())
+            .parse::<i32>()
+            .unwrap(),
         manufacturer: None,
         allow_c_echo: None,
         allow_c_find: None,
