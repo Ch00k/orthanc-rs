@@ -69,8 +69,7 @@ jobs:
           toolchain: stable
 
       - name: run tests
-        run: |
-          make integration_test_coverage
+        run: make integration_test_coverage
 
       - name: upload coverage
         uses: codecov/codecov-action@v1
