@@ -14,6 +14,3 @@ services:
       DINO_SCP_AET: ${DINO_SCP_AET:-DINO}
     ports:
       - 5252:5252
-
-volumes:
-  orthanc:
