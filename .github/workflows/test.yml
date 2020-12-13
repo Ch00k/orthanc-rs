@@ -39,8 +39,6 @@ jobs:
         image: ch00k/orthanc-nginx:${{matrix.orthanc}}
         ports:
           - 8028:80
-        #volumes:
-        #  - orthanc:/etc/orthanc
       dino:
         image: ch00k/dino
         env:
@@ -79,8 +77,6 @@ jobs:
         image: ch00k/orthanc-nginx:1.8.0
         ports:
           - 8028:80
-        #volumes:
-        #  - orthanc:/etc/orthanc
       dino:
         image: ch00k/dino
         env:
