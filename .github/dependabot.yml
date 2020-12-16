@@ -5,5 +5,11 @@ updates:
     schedule:
       interval: "daily"
     ignore:
+      # Breaking changes
+      # https://github.com/alexliesenfeld/httpmock/blob/master/CHANGELOG.md#version-050
       - dependency-name: httpmock
         versions: ["0.5.x"]
+
+      # https://github.com/seanmonstar/reqwest/pull/1076
+      - dependency-name: bytes
+        versions: ["0.6.x"]
