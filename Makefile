@@ -12,19 +12,28 @@ export DINO_SCP_AET ?= DINO
 
 .PHONY: test clean unit_test integration_test unit_test_coverage integration_test_coverage install_tarpaulin cleanup_orthanc populate_orthanc reset_orthanc start_services stop_services release
 
+build:
+	cargo build
+
+doc:
+	cargo doc --no-deps
+
+serve_doc: doc
+	python -m http.server -b 127.0.0.1 -d target/doc 9001
+
 test: unit_test integration_test
 
 clean: cleanup_orthanc stop_services
 	cargo clean
 
 unit_test:
-	cargo test --lib
+	cargo test --lib ${TEST}
 
 unit_test_coverage: install_tarpaulin
 	cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
 integration_test: reset_orthanc
-	cargo test --test integration -- --test-threads=1 --show-output
+	cargo test --test integration -- ${TEST} --test-threads=1 --show-output
 
 integration_test_coverage: install_tarpaulin reset_orthanc
 	cargo tarpaulin --test integration --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
