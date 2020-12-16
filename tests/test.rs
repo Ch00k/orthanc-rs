@@ -442,7 +442,7 @@ fn test_delete() {
             remaining_ancestor: Some(Ancestor {
                 id: instance.parent_series,
                 path: format!("/series/{}", series.id),
-                entity: Entity::Series,
+                entity: EntityKind::Series,
             })
         }
     );
@@ -463,7 +463,7 @@ fn test_delete() {
             remaining_ancestor: Some(Ancestor {
                 id: series.parent_study,
                 path: format!("/studies/{}", study.id),
-                entity: Entity::Study,
+                entity: EntityKind::Study,
             })
         }
     );
@@ -484,7 +484,7 @@ fn test_delete() {
             remaining_ancestor: Some(Ancestor {
                 id: study.parent_patient,
                 path: format!("/patients/{}", patient.id),
-                entity: Entity::Patient,
+                entity: EntityKind::Patient,
             })
         }
     );
