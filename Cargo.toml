@@ -1,7 +1,7 @@
 [package]
 name = "orthanc"
 description = "Client for Orthanc REST API"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Andrii Yurchuk <ay@mntw.re>"]
 edition = "2018"
 repository = "https://github.com/Ch00k/orthanc-rs"

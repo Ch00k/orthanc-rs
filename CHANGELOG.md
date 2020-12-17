@@ -2,8 +2,13 @@
 
 <!-- next-header -->
 
+## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.6.0...HEAD) ReleaseDate
 
-## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.5.2...HEAD) - ReleaseDate
+**Fixes and improvements**
+
+
+
+## [0.6.0](https://github.com/Ch00k/orthanc-rs/compare/0.5.2...0.6.0) - 2020-12-17
 
 **Fixes and improvements**
 
