@@ -125,10 +125,19 @@ pub trait Entity {
         0
     }
 
+    /// The kind of the entity's parent entity. [`None`] if the entity does not have a parent (e.g.
+    /// is a `Patient`)
+    fn parent_kind(&self) -> Option<EntityKind> {
+        None
+    }
+
     /// The name of the entity's parent entity. [`None`] if the entity does not have a parent (e.g.
     /// is a `Patient`)
-    fn parent_kind_name(&self) -> Option<&str> {
-        None
+    fn parent_kind_name(&self) -> Option<String> {
+        match self.parent_kind() {
+            Some(k) => Some(format!("{:?}", k)),
+            None => None,
+        }
     }
 
     /// Then name of the entity's child entity, pluralized (e.g. "Studies", "Series", "Instances").
@@ -219,7 +228,7 @@ impl Entity for Patient {
 
     /// Returns "studies"
     fn children_kind_name(&self) -> Option<&str> {
-        Some("studies")
+        Some("Studies")
     }
 
     /// Get the value of a DICOM tag from `main_dicom_tags`
@@ -272,14 +281,9 @@ impl Entity for Study {
         Some(&self.parent_patient)
     }
 
-    /// Returns "Patient"
-    fn parent_kind_name(&self) -> Option<&str> {
-        Some("Patient")
-    }
-
     /// Returns "series"
     fn children_kind_name(&self) -> Option<&str> {
-        Some("series")
+        Some("Series")
     }
 
     /// Get the value of a DICOM tag from `main_dicom_tags`, or if the tag is absent there, from
@@ -299,6 +303,11 @@ impl Entity for Study {
     /// Number of series that belong to this study
     fn children_len(&self) -> usize {
         self.children().len()
+    }
+
+    /// Returns [`EntityKind::Patient`]
+    fn parent_kind(&self) -> Option<EntityKind> {
+        Some(EntityKind::Patient)
     }
 }
 
@@ -336,14 +345,9 @@ impl Entity for Series {
         Some(&self.parent_study)
     }
 
-    /// Returns "Study"
-    fn parent_kind_name(&self) -> Option<&str> {
-        Some("Study")
-    }
-
     /// Returns "instances"
     fn children_kind_name(&self) -> Option<&str> {
-        Some("instances")
+        Some("Instances")
     }
 
     /// Get the value of a DICOM tag from `main_dicom_tags`
@@ -359,6 +363,11 @@ impl Entity for Series {
     /// Number of instances that belong to this series
     fn children_len(&self) -> usize {
         self.children().len()
+    }
+
+    /// Returns [`EntityKind::Study`]
+    fn parent_kind(&self) -> Option<EntityKind> {
+        Some(EntityKind::Study)
     }
 }
 
@@ -396,14 +405,14 @@ impl Entity for Instance {
         Some(&self.parent_series)
     }
 
-    /// Returns "Series"
-    fn parent_kind_name(&self) -> Option<&str> {
-        Some("Series")
-    }
-
     /// Get the value of a DICOM tag from `main_dicom_tags`
     fn main_dicom_tag(&self, tag: &str) -> Option<&str> {
         self.main_dicom_tags.get(tag).map(AsRef::as_ref)
+    }
+
+    /// Returns [`EntityKind::Series`]
+    fn parent_kind(&self) -> Option<EntityKind> {
+        Some(EntityKind::Series)
     }
 
     /// Index of the instance in the series
@@ -4141,5 +4150,162 @@ mod tests {
                 force: None
             }
         );
+    }
+
+    #[test]
+    fn test_entity_trait_patient() {
+        let patient = Patient {
+            id: "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493".to_string(),
+            is_stable: true,
+            last_update: NaiveDate::from_ymd(2020, 1, 1).and_hms(15, 46, 17),
+            main_dicom_tags: hashmap! {
+                "PatientName".to_string() => "Rick Sanchez".to_string(),
+            },
+            studies: ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()].to_vec(),
+            entity: EntityKind::Patient,
+            anonymized_from: None,
+        };
+
+        assert_eq!(patient.kind(), EntityKind::Patient);
+        assert_eq!(patient.id(), "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493");
+        assert_eq!(patient.parent_id(), None);
+        assert_eq!(patient.main_dicom_tag("PatientName"), Some("Rick Sanchez"));
+        assert_eq!(
+            patient.children(),
+            ["e8cafcbe-caf08c39-6e205f15-18554bb8-b3f9ef04".to_string()]
+        );
+        assert_eq!(patient.children_len(), 1);
+        assert_eq!(patient.index(), None);
+        assert_eq!(patient.size(), 0);
+        assert_eq!(patient.parent_kind(), None);
+        assert_eq!(patient.parent_kind_name(), None);
+        assert_eq!(patient.children_kind_name(), Some("Studies"));
+    }
+
+    #[test]
+    fn test_entity_trait_study() {
+        let study = Study {
+            id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+            is_stable: true,
+            last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+            main_dicom_tags: hashmap! {
+                "AccessionNumber".to_string() => "foobar".to_string(),
+            },
+            parent_patient: "7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe".to_string(),
+            patient_main_dicom_tags: hashmap! {
+                "PatientName".to_string() => "Rick Sanchez".to_string(),
+            },
+            series: [
+                "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+                "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string(),
+            ]
+            .to_vec(),
+            entity: EntityKind::Study,
+            anonymized_from: None,
+        };
+
+        assert_eq!(study.kind(), EntityKind::Study);
+        assert_eq!(study.id(), "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5");
+        assert_eq!(
+            study.parent_id(),
+            Some("7e43f8d3-e50280e6-470079e9-02241af1-d286bdbe")
+        );
+        assert_eq!(study.main_dicom_tag("AccessionNumber"), Some("foobar"));
+        assert_eq!(study.main_dicom_tag("PatientName"), Some("Rick Sanchez"));
+        assert_eq!(
+            study.children(),
+            [
+                "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+                "2ab7dbe7-f1a18a78-86145443-18a8ff93-0b65f2b2".to_string()
+            ]
+        );
+        assert_eq!(study.children_len(), 2);
+        assert_eq!(study.index(), None);
+        assert_eq!(study.size(), 0);
+        assert_eq!(study.parent_kind(), Some(EntityKind::Patient));
+        assert_eq!(study.parent_kind_name(), Some("Patient".to_string()));
+        assert_eq!(study.children_kind_name(), Some("Series"));
+    }
+
+    #[test]
+    fn test_entity_trait_series() {
+        let series = Series {
+            id: "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
+            status: "Unknown".to_string(),
+            is_stable: true,
+            last_update: NaiveDate::from_ymd(2020, 8, 30).and_hms(19, 11, 09),
+            main_dicom_tags: hashmap! {
+                "BodyPartExamined".to_string() => "ABDOMEN".to_string(),
+            },
+            parent_study: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
+            expected_number_of_instances: Some(17),
+            instances: [
+                "556530b5-de7c487b-110b9d0e-12cfdbb9-f06b546e".to_string(),
+                "c46605db-836489fa-cb55fbbc-13c8a913-b0bad6ac".to_string(),
+            ]
+            .to_vec(),
+            entity: EntityKind::Series,
+            anonymized_from: None,
+        };
+
+        assert_eq!(series.kind(), EntityKind::Series);
+        assert_eq!(series.id(), "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c");
+        assert_eq!(
+            series.parent_id(),
+            Some("63bf5d42-b5382159-01971752-e0ceea3d-399bbca5")
+        );
+        assert_eq!(series.main_dicom_tag("BodyPartExamined"), Some("ABDOMEN"));
+        assert_eq!(
+            series.children(),
+            [
+                "556530b5-de7c487b-110b9d0e-12cfdbb9-f06b546e".to_string(),
+                "c46605db-836489fa-cb55fbbc-13c8a913-b0bad6ac".to_string()
+            ]
+        );
+        assert_eq!(series.children_len(), 2);
+        assert_eq!(series.index(), None);
+        assert_eq!(series.size(), 0);
+        assert_eq!(series.parent_kind(), Some(EntityKind::Study));
+        assert_eq!(series.parent_kind_name(), Some("Study".to_string()));
+        assert_eq!(series.children_kind_name(), Some("Instances"));
+    }
+
+    #[test]
+    fn test_entity_trait_instance() {
+        let instance = Instance {
+            id: "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c".to_string(),
+            main_dicom_tags: hashmap! {
+                "SOPInstanceUID".to_string() => "1.2.3.4.5.6789".to_string(),
+            },
+            parent_series: "82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03".to_string(),
+            index_in_series: Some(13),
+            file_uuid: "d8c5eff3-986c-4fe4-b06e-7e52b2a4238e".to_string(),
+            file_size: 139402,
+            modified_from: Some("22c54cb6-28302a69-3ff454a3-676b98f4-b84cd80a".to_string()),
+            entity: EntityKind::Instance,
+            anonymized_from: None,
+        };
+
+        assert_eq!(instance.kind(), EntityKind::Instance);
+        assert_eq!(
+            instance.id(),
+            "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c"
+        );
+        assert_eq!(
+            instance.parent_id(),
+            Some("82081568-b6f8f4e6-ced76876-6504da25-ed0dfe03")
+        );
+        assert_eq!(
+            instance.main_dicom_tag("SOPInstanceUID"),
+            Some("1.2.3.4.5.6789")
+        );
+        let ch: &[String] = &[];
+        assert_eq!(instance.children(), ch);
+        assert_eq!(instance.children_len(), 0);
+        assert_eq!(instance.index(), Some(13));
+        assert_eq!(instance.size(), 139402);
+        assert_eq!(instance.parent_kind(), Some(EntityKind::Series));
+        assert_eq!(instance.parent_kind_name(), Some("Series".to_string()));
+        assert_eq!(instance.children_kind_name(), None);
     }
 }
