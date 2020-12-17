@@ -1,5 +1,14 @@
 # Changelog
 
+<!-- ## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.5.2...HEAD) - ReleaseDate -->
+
+## [Unreleased](https://github.com/Ch00k/orthanc-rs/compare/0.5.2...HEAD) - ReleaseDate
+
+**Fixes and improvements**
+
+Renamed `Entity` enum to `EntityKind` and added `Entity` trait
+[#47](https://github.com/Ch00k/orthanc-rs/pull/47)
+
 ## [0.5.2](https://github.com/Ch00k/orthanc-rs/compare/0.5.1...0.5.2) - 2020-12-06
 
 **Fixes and improvements**
