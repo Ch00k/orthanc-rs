@@ -84,7 +84,7 @@ orthanc-rs is covered by unit as well as integration tests.
 
 To run unit tests execute
 
-```bash
+```
 $ make unit_test
 ```
 
@@ -93,8 +93,8 @@ $ make unit_test
 Install [docker-compose](https://docs.docker.com/compose) and
 [jq](https://stedolan.github.io/jq) and execute
 
-```bash
-$ make integration_test
+```
+$ make start_services && make integration_test
 ```
 
 This will spin up all the necessary services required for integration tests, and run the
@@ -103,10 +103,10 @@ tests.
 During and after the test run Orthanc web UI is available at http://localhost:8028
 (username: _orthanc_, password: _orthanc_).
 
-Containers started by the integration test are left running after the test is finished. To
+Containers started by `start_services` are left running after the test is finished. To
 stop them execute
 
-```bash
+```
 $ make stop_services
 ```
 
