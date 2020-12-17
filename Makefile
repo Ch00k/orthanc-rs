@@ -57,4 +57,4 @@ stop_services:
 	docker-compose down
 
 release:
-	cargo-release
+	cargo release ${VERSION}
