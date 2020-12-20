@@ -15,12 +15,12 @@ autotests = false
 [dependencies]
 bytes = "0.5"
 chrono = "0.4"
-dicom-object = "0.3"
 reqwest = { version = "0.10", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [dev-dependencies]
+dicom-object = "0.3"
 httpmock = "0.4"
 maplit = "1.0"
 regex = "1.4"
