@@ -6,7 +6,8 @@
 
 **Fixes and improvements**
 
-
+Moved `dicom-object` from `dependencies` to `dev-dependencies`
+[#57](https://github.com/Ch00k/orthanc-rs/pull/57)
 
 ## [0.6.0](https://github.com/Ch00k/orthanc-rs/compare/0.5.2...0.6.0) - 2020-12-17
 
