@@ -86,9 +86,9 @@ pub enum EntityKind {
 }
 
 /// A trait, that implements common methods for all entity kinds
-pub trait Entity {
+pub trait Entity: serde::de::DeserializeOwned {
     /// Entity kind
-    fn kind(&self) -> EntityKind;
+    fn kind() -> EntityKind;
 
     /// The ID of the entity
     fn id(&self) -> &str;
@@ -217,7 +217,7 @@ pub struct Patient {
 
 impl Entity for Patient {
     /// Returns the [`EntityKind::Patient`] variant
-    fn kind(&self) -> EntityKind {
+    fn kind() -> EntityKind {
         EntityKind::Patient
     }
 
@@ -268,7 +268,7 @@ pub struct Study {
 
 impl Entity for Study {
     /// Returns the [`EntityKind::Study`] variant
-    fn kind(&self) -> EntityKind {
+    fn kind() -> EntityKind {
         EntityKind::Study
     }
     /// The ID of the study
@@ -332,7 +332,7 @@ pub struct Series {
 }
 
 impl Entity for Series {
-    fn kind(&self) -> EntityKind {
+    fn kind() -> EntityKind {
         EntityKind::Series
     }
     /// The ID of the series
@@ -392,7 +392,7 @@ pub struct Instance {
 
 impl Entity for Instance {
     /// Returns the [`EntityKind::Instance`] variant
-    fn kind(&self) -> EntityKind {
+    fn kind() -> EntityKind {
         EntityKind::Instance
     }
     /// The ID of the instance
@@ -484,6 +484,13 @@ pub struct Ancestor {
 #[serde(rename_all = "PascalCase")]
 pub struct RemainingAncestor {
     pub remaining_ancestor: Option<Ancestor>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+struct Search {
+    level: EntityKind,
+    query: HashMap<String, String>,
+    expand: Option<bool>,
 }
 
 /// Result of a DICOM upload request
@@ -4154,6 +4161,8 @@ mod tests {
 
     #[test]
     fn test_entity_trait_patient() {
+        assert_eq!(Patient::kind(), EntityKind::Patient);
+
         let patient = Patient {
             id: "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493".to_string(),
             is_stable: true,
@@ -4166,7 +4175,6 @@ mod tests {
             anonymized_from: None,
         };
 
-        assert_eq!(patient.kind(), EntityKind::Patient);
         assert_eq!(patient.id(), "f88cbd3f-a00dfc59-9ca1ac2d-7ce9851a-40e5b493");
         assert_eq!(patient.parent_id(), None);
         assert_eq!(patient.main_dicom_tag("PatientName"), Some("Rick Sanchez"));
@@ -4184,6 +4192,8 @@ mod tests {
 
     #[test]
     fn test_entity_trait_study() {
+        assert_eq!(Study::kind(), EntityKind::Study);
+
         let study = Study {
             id: "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5".to_string(),
             is_stable: true,
@@ -4204,7 +4214,6 @@ mod tests {
             anonymized_from: None,
         };
 
-        assert_eq!(study.kind(), EntityKind::Study);
         assert_eq!(study.id(), "63bf5d42-b5382159-01971752-e0ceea3d-399bbca5");
         assert_eq!(
             study.parent_id(),
@@ -4229,6 +4238,8 @@ mod tests {
 
     #[test]
     fn test_entity_trait_series() {
+        assert_eq!(Series::kind(), EntityKind::Series);
+
         let series = Series {
             id: "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c".to_string(),
             status: "Unknown".to_string(),
@@ -4248,7 +4259,6 @@ mod tests {
             anonymized_from: None,
         };
 
-        assert_eq!(series.kind(), EntityKind::Series);
         assert_eq!(series.id(), "cd00fffc-db25be29-0c6da430-c56796a5-ba06933c");
         assert_eq!(
             series.parent_id(),
@@ -4272,6 +4282,8 @@ mod tests {
 
     #[test]
     fn test_entity_trait_instance() {
+        assert_eq!(Instance::kind(), EntityKind::Instance);
+
         let instance = Instance {
             id: "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c".to_string(),
             main_dicom_tags: hashmap! {
@@ -4286,7 +4298,6 @@ mod tests {
             anonymized_from: None,
         };
 
-        assert_eq!(instance.kind(), EntityKind::Instance);
         assert_eq!(
             instance.id(),
             "29fa4d9d-51a69d1d-70e2b29a-fd824316-50850d0c"
