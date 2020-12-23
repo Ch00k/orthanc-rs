@@ -6,27 +6,25 @@
 
 **Fixes and improvements**
 
+* Changed `Entity::kind` to be a function instead of a method [#59](https://github.com/Ch00k/orthanc-rs/pull/59)
 
 ## [0.6.1](https://github.com/Ch00k/orthanc-rs/compare/0.6.0...0.6.1) 2020-12-20
 
 **Fixes and improvements**
 
-Moved `dicom-object` from `dependencies` to `dev-dependencies`
-[#57](https://github.com/Ch00k/orthanc-rs/pull/57)
+* Moved `dicom-object` from `dependencies` to `dev-dependencies` [#57](https://github.com/Ch00k/orthanc-rs/pull/57)
 
 ## [0.6.0](https://github.com/Ch00k/orthanc-rs/compare/0.5.2...0.6.0) - 2020-12-17
 
 **Fixes and improvements**
 
-Renamed `Entity` enum to `EntityKind` and added `Entity` trait
-[#47](https://github.com/Ch00k/orthanc-rs/pull/47)
+* Renamed `Entity` enum to `EntityKind` and added `Entity` trait [#47](https://github.com/Ch00k/orthanc-rs/pull/47)
 
 ## [0.5.2](https://github.com/Ch00k/orthanc-rs/compare/0.5.1...0.5.2) - 2020-12-06
 
 **Fixes and improvements**
 
-* Implemented getting system info through `/system` endpoint
-  [#42](https://github.com/Ch00k/orthanc-rs/pull/42)
+* Implemented getting system info through `/system` endpoint [#42](https://github.com/Ch00k/orthanc-rs/pull/42)
 
 ## [0.5.1](https://github.com/Ch00k/orthanc-rs/compare/0.5.0...0.5.1) - 2020-11-16
 
@@ -38,16 +36,15 @@ Renamed `Entity` enum to `EntityKind` and added `Entity` trait
 
 **Fixes and improvements**
 
-* Added methods to create, modify and delete modalities
-  [#34](https://github.com/Ch00k/orthanc-rs/pull/34)
+* Added methods to create, modify and delete modalities [#34](https://github.com/Ch00k/orthanc-rs/pull/34)
 
 
 ## [0.4.0](https://github.com/Ch00k/orthanc-rs/compare/0.3.0...0.4.0) - 2020-11-06
 
 **Fixes and improvements**
 
-* Added `force` field to `Anonymization` struct to support anonymization of protected
-  DICOM tags [#30](https://github.com/Ch00k/orthanc-rs/pull/30)
+* Added `force` field to `Anonymization` struct to support anonymization of protected DICOM tags
+  [#30](https://github.com/Ch00k/orthanc-rs/pull/30)
 
 ## [0.3.0](https://github.com/Ch00k/orthanc-rs/compare/0.2.1...0.3.0) - 2020-11-01
 
@@ -55,7 +52,5 @@ Renamed `Entity` enum to `EntityKind` and added `Entity` trait
 
 * Fixed an issue with unexpectedly absent `IndexInSeries` field of instance JSON
   [#26](https://github.com/Ch00k/orthanc-rs/pull/26)
-* Increased client timeout to 600 seconds
-  [#27](https://github.com/Ch00k/orthanc-rs/pull/27)
-* Switched license from WTFPL to Unlicense
-  [#28](https://github.com/Ch00k/orthanc-rs/pull/28)
+* Increased client timeout to 600 seconds [#27](https://github.com/Ch00k/orthanc-rs/pull/27)
+* Switched license from WTFPL to Unlicense [#28](https://github.com/Ch00k/orthanc-rs/pull/28)
