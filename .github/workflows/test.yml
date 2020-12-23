@@ -76,7 +76,7 @@ jobs:
       orthanc:
         image: jodogne/orthanc:1.8.2
         ports:
-          - 8028:80
+          - 8028:8042
       dino:
         image: ch00k/dino
         env:
