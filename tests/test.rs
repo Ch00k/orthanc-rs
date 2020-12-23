@@ -1253,3 +1253,58 @@ fn test_modality_store() {
         }
     );
 }
+
+#[test]
+fn test_search_patient_level() {
+    let res: Vec<Patient> = client()
+        .search(hashmap! {"PatientID".to_string() => PATIENT_ID.to_string()})
+        .unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0].main_dicom_tag("PatientID").unwrap(), PATIENT_ID);
+}
+
+#[test]
+fn test_search_study_level() {
+    let res: Vec<Study> = client()
+        .search(hashmap! {"StudyInstanceUID".to_string() => STUDY_INSTANCE_UID.to_string()})
+        .unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(
+        res[0].main_dicom_tag("StudyInstanceUID").unwrap(),
+        STUDY_INSTANCE_UID
+    );
+}
+
+#[test]
+fn test_search_series_level() {
+    let res: Vec<Series> = client()
+        .search(
+            hashmap! {"SeriesInstanceUID".to_string() => SERIES_INSTANCE_UID.to_string()},
+        )
+        .unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(
+        res[0].main_dicom_tag("SeriesInstanceUID").unwrap(),
+        SERIES_INSTANCE_UID
+    );
+}
+
+#[test]
+fn test_search_instance_level() {
+    let res: Vec<Instance> = client()
+        .search(hashmap! {"SOPInstanceUID".to_string() => SOP_INSTANCE_UID.to_string()})
+        .unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(
+        res[0].main_dicom_tag("SOPInstanceUID").unwrap(),
+        SOP_INSTANCE_UID
+    );
+}
+
+#[test]
+fn _test_search_instances_in_patient_level() {
+    let res: Vec<Instance> = client()
+        .search(hashmap! {"PatientID".to_string() => PATIENT_ID.to_string()})
+        .unwrap();
+    assert_eq!(res.len(), 2);
+}
