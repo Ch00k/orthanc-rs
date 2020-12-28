@@ -1004,9 +1004,8 @@ impl Client {
     /// If no error is returned, the request was successful
     pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
         let mut data = HashMap::new();
-        // TODO: This does not seem idiomatic
-        if timeout != None {
-            data.insert("Timeout", timeout);
+        if let Some(to) = timeout {
+            data.insert("Timeout", to);
         }
         self.post(
             &format!("modalities/{}/echo", modality),
