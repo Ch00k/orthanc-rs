@@ -187,7 +187,7 @@ fn test_wrong_auth() {
     let client = Client::new(
         env::var("ORC_ORTHANC_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.to_string()),
     )
-    .auth("foo".to_string(), "bar".to_string());
+    .auth("foo", "bar");
     let resp = client.modalities();
     assert_eq!(
         resp.unwrap_err(),

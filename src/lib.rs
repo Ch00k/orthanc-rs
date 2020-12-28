@@ -17,13 +17,13 @@
 //!
 //! ```rust
 //! use orthanc::Client;
-//! let client = Client::new("http://localhost:8042".to_string());
+//! let client = Client::new("http://localhost:8042");
 //! ```
 //!
 //! If authentication is enabled on the Orthanc instance:
 //!
 //! ```rust
-//! client.auth("username".to_string(), "password".to_string());
+//! client.auth("username", "password");
 //! ```
 //!
 //! List patients:
@@ -597,20 +597,19 @@ impl From<str::Utf8Error> for Error {
 /// Creating a new client instance:
 ///
 /// ```
-/// let client = Client::new("http://localhost:8042".to_string());
+/// let client = Client::new("http://localhost:8042");
 /// ```
 ///
 /// Authentication (setting `username`/`password`) can be done by calling the `auth` method:
 ///
 /// ```
-/// client.auth("username".to_string(), "password".to_string());
+/// client.auth("username", "password");
 /// ```
 ///
 /// Or combined:
 ///
 /// ```
-/// let client = Client::new("http://localhost:8042".to_string())
-///     .auth("username".to_string(), "password".to_string());
+/// let client = Client::new("http://localhost:8042").auth("username", "password");
 /// ```
 #[derive(Debug)]
 pub struct Client {
@@ -624,16 +623,16 @@ impl Client {
     /// Creates a new client instance
     ///
     /// ```
-    /// let client = Client::new("http://localhost:8042".to_string());
+    /// let client = Client::new("http://localhost:8042");
     /// ```
-    pub fn new(server: String) -> Client {
+    pub fn new(server: impl Into<String>) -> Client {
         let client = reqwest::blocking::ClientBuilder::new()
             .timeout(time::Duration::from_secs(600))
             .build()
             // TODO: Should we be catching the error here?
             .unwrap();
         Client {
-            server,
+            server: server.into(),
             username: None,
             password: None,
             client,
@@ -643,12 +642,15 @@ impl Client {
     /// Adds authentication to the client instance
     ///
     /// ```
-    /// let client = Client::new("http://localhost:8042".to_string())
-    ///     .auth("username".to_string(), "password".to_string());
+    /// let client = Client::new("http://localhost:8042").auth("username", "password");
     /// ```
-    pub fn auth(mut self, username: String, password: String) -> Client {
-        self.username = Some(username);
-        self.password = Some(password);
+    pub fn auth(
+        mut self,
+        username: impl Into<String>,
+        password: impl Into<String>,
+    ) -> Client {
+        self.username = Some(username.into());
+        self.password = Some(password.into());
         self
     }
 
@@ -1339,8 +1341,7 @@ mod tests {
 
     #[test]
     fn test_error_from_reqwest() {
-        let cl = Client::new("http://foo".to_string())
-            .auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new("http://foo").auth("foo", "bar");
         let resp = cl.patients();
 
         let expected_err = concat!(
@@ -1374,7 +1375,7 @@ mod tests {
 
     #[test]
     fn test_default_fields() {
-        let cl = Client::new("http://localhost:8042".to_string());
+        let cl = Client::new("http://localhost:8042");
         assert_eq!(cl.server, "http://localhost:8042".to_string());
         assert_eq!(cl.username, None);
         assert_eq!(cl.password, None);
@@ -1382,8 +1383,7 @@ mod tests {
 
     #[test]
     fn test_auth() {
-        let cl = Client::new("http://localhost:8042".to_string())
-            .auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new("http://localhost:8042").auth("foo", "bar");
         assert_eq!(cl.username, Some("foo".to_string()));
         assert_eq!(cl.password, Some("bar".to_string()));
     }
@@ -1401,7 +1401,7 @@ mod tests {
             .return_body("bar")
             .create_on(&mock_server);
 
-        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new(url).auth("foo", "bar");
         let resp = cl.get("foo").unwrap();
 
         assert_eq!(resp, "bar");
@@ -1421,7 +1421,7 @@ mod tests {
             .return_body("bar")
             .create_on(&mock_server);
 
-        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new(url).auth("foo", "bar");
         let mut writer: Vec<u8> = vec![];
         cl.get_stream("foo", &mut writer).unwrap();
 
@@ -1444,7 +1444,7 @@ mod tests {
             .return_body("baz")
             .create_on(&mock_server);
 
-        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new(url).auth("foo", "bar");
         let resp = cl.post("foo", serde_json::json!("bar")).unwrap();
 
         assert_eq!(resp, "baz");
@@ -1466,7 +1466,7 @@ mod tests {
             .return_body("baz")
             .create_on(&mock_server);
 
-        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new(url).auth("foo", "bar");
         let mut writer: Vec<u8> = vec![];
         cl.post_receive_stream("foo", serde_json::json!("bar"), &mut writer)
             .unwrap();
@@ -1490,7 +1490,7 @@ mod tests {
             .return_body("baz")
             .create_on(&mock_server);
 
-        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new(url).auth("foo", "bar");
         let resp = cl.post_bytes("foo", "bar".as_bytes()).unwrap();
 
         assert_eq!(resp, "baz");
@@ -1509,7 +1509,7 @@ mod tests {
             .return_status(200)
             .create_on(&mock_server);
 
-        let cl = Client::new(url).auth("foo".to_string(), "bar".to_string());
+        let cl = Client::new(url).auth("foo", "bar");
         let resp = cl.delete("foo").unwrap();
 
         assert_eq!(resp, "");
