@@ -8,6 +8,7 @@
 
 * Changed `Entity::kind` to be a function instead of a method [#59](https://github.com/Ch00k/orthanc-rs/pull/59)
 * Implemented search within Orthanc (`/tools/find` endpoint) [#62](https://github.com/Ch00k/orthanc-rs/pull/62)
+* Changed `Client::new` and `Client.auth` to accept `&str` [#63](https://github.com/Ch00k/orthanc-rs/pull/63)
 
 ## [0.6.1](https://github.com/Ch00k/orthanc-rs/compare/0.6.0...0.6.1) 2020-12-20
 
