@@ -29,13 +29,13 @@ Create an API client instance:
 
 ```rust
 use orthanc::Client;
-let client = Client::new("http://localhost:8042".to_string());
+let client = Client::new("http://localhost:8042");
 ```
 
 If authentication is enabled on the Orthanc instance:
 
 ```rust
-client.auth("username".to_string(), "password".to_string());
+client.auth("username", "password");
 ```
 
 List patients:
