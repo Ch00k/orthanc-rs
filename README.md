@@ -28,7 +28,7 @@ orthanc = "0.6.1"
 Create an API client instance:
 
 ```rust
-use orthanc::client::Client;
+use orthanc::Client;
 let client = Client::new("http://localhost:8042");
 ```
 

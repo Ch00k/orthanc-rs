@@ -16,7 +16,7 @@
 //! Create an API client instance:
 //!
 //! ```rust
-//! use orthanc::client::Client;
+//! use orthanc::Client;
 //! let client = Client::new("http://localhost:8042");
 //! ```
 //!
@@ -62,7 +62,8 @@
 //! client.upload(&data).unwrap();
 //! ```
 
-use error::*;
+pub use client::Client;
+pub use error::Error;
 use std::result;
 
 pub mod client;
