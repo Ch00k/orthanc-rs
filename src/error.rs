@@ -56,3 +56,93 @@ impl From<str::Utf8Error> for Error {
         Error::new(&e.to_string(), None)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Client;
+    use serde_json::{Error as SerdeError, Value};
+    use std::str;
+
+    #[test]
+    fn test_error_formatting() {
+        let error = Error {
+            message: "400".to_string(),
+            details: Some(ApiError {
+                method: "POST".to_string(),
+                uri: "/instances".to_string(),
+                message: "Bad file format".to_string(),
+                details: Some(
+                    "Cannot parse an invalid DICOM file (size: 12 bytes)".to_string(),
+                ),
+                http_status: 400,
+                http_error: "Bad Request".to_string(),
+                orthanc_status: 15,
+                orthanc_error: "Bad file format".to_string(),
+            }),
+        };
+
+        // TODO: Any way to make the formatting nicer?
+        let expected_error_str = r#"400: Some(
+    ApiError {
+        method: "POST",
+        uri: "/instances",
+        message: "Bad file format",
+        details: Some(
+            "Cannot parse an invalid DICOM file (size: 12 bytes)",
+        ),
+        http_status: 400,
+        http_error: "Bad Request",
+        orthanc_status: 15,
+        orthanc_error: "Bad file format",
+    },
+)"#;
+        assert_eq!(format!("{}", error), expected_error_str);
+    }
+
+    #[test]
+    fn test_error_from_serde_json() {
+        let serde_error: Result<Value, SerdeError> = serde_json::from_str("foobar");
+        assert_eq!(
+            Error::from(serde_error.unwrap_err()),
+            Error {
+                message: "expected ident at line 1 column 2".to_string(),
+                details: None,
+            },
+        )
+    }
+
+    #[test]
+    fn test_error_from_reqwest() {
+        let cl = Client::new("http://foo").auth("foo", "bar");
+        let resp = cl.patients();
+
+        let expected_err = concat!(
+            r#"error sending request for url (http://foo/patients): "#,
+            r#"error trying to connect: dns error: "#,
+            r#"failed to lookup address information: "#,
+            r#"Temporary failure in name resolution"#,
+        );
+        assert_eq!(
+            resp.unwrap_err(),
+            Error {
+                message: expected_err.to_string(),
+                details: None,
+            },
+        );
+    }
+
+    #[test]
+    fn test_error_from_utf8() {
+        let sparkle_heart = vec![0, 159, 146, 150];
+        let utf8_error = str::from_utf8(&sparkle_heart).unwrap_err();
+        let orthanc_error = Error::from(utf8_error);
+        assert_eq!(
+            orthanc_error,
+            Error {
+                message: "invalid utf-8 sequence of 1 bytes from index 1".to_string(),
+                details: None,
+            }
+        );
+    }
+}

@@ -158,3 +158,84 @@ pub struct ModificationResult {
     #[serde(rename = "Type")]
     pub entity: EntityKind,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use maplit::hashmap;
+
+    #[test]
+    fn test_modification_deserialize() {
+        let json = r#"
+            {
+                "replace": {
+                    "Foo": "42",
+                    "Bar": "17"
+                },
+                "remove": ["Baz", "Qux"],
+                "force": true
+            }
+        "#;
+        let m1: Modification = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            m1,
+            Modification {
+                replace: Some(
+                    hashmap! {"Foo".to_string() => "42".to_string(), "Bar".to_string() => "17".to_string()}
+                ),
+                remove: Some(vec!["Baz".to_string(), "Qux".to_string()]),
+                force: Some(true)
+            }
+        );
+
+        let m2: Modification = serde_json::from_str("{}").unwrap();
+        assert_eq!(
+            m2,
+            Modification {
+                replace: None,
+                remove: None,
+                force: None
+            }
+        );
+    }
+
+    #[test]
+    fn test_anonymization_deserialize() {
+        let json = r#"
+            {
+                "replace": {
+                    "Foo": "42",
+                    "Bar": "17"
+                },
+                "keep": ["Baz", "Qux"],
+                "keep_private_tags": true,
+                "dicom_version": "42.17",
+                "force": true
+            }
+        "#;
+        let a1: Anonymization = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            a1,
+            Anonymization {
+                replace: Some(
+                    hashmap! {"Foo".to_string() => "42".to_string(), "Bar".to_string() => "17".to_string()}
+                ),
+                keep: Some(vec!["Baz".to_string(), "Qux".to_string()]),
+                keep_private_tags: Some(true),
+                dicom_version: Some("42.17".to_string()),
+                force: Some(true)
+            }
+        );
+        let a2: Anonymization = serde_json::from_str("{}").unwrap();
+        assert_eq!(
+            a2,
+            Anonymization {
+                replace: None,
+                keep: None,
+                keep_private_tags: None,
+                dicom_version: None,
+                force: None
+            }
+        );
+    }
+}
