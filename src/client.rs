@@ -94,7 +94,7 @@ impl Client {
         check_http_error(status, body)
     }
 
-    fn get_stream<W: Write>(&self, path: &str, writer: &mut W) -> Result<()> {
+    fn get_stream<W: Write>(&self, path: &str, mut writer: W) -> Result<()> {
         let url = format!("{}/{}", self.server, &path);
         let mut request = self.client.get(&url);
         request = self.add_auth(request);
@@ -110,7 +110,7 @@ impl Client {
             };
             return Err(Error::new(&message, serde_json::from_slice(&body)?));
         }
-        resp.copy_to(writer)?;
+        resp.copy_to(&mut writer)?;
         Ok(())
     }
 
@@ -128,7 +128,7 @@ impl Client {
         &self,
         path: &str,
         data: Value,
-        writer: &mut W,
+        mut writer: W,
     ) -> Result<()> {
         let url = format!("{}/{}", self.server, path);
         let mut request = self.client.post(&url).json(&data);
@@ -145,7 +145,7 @@ impl Client {
             };
             return Err(Error::new(&message, serde_json::from_slice(&body)?));
         }
-        resp.copy_to(writer)?;
+        resp.copy_to(&mut writer)?;
         Ok(())
     }
 
@@ -333,7 +333,7 @@ impl Client {
     /// let mut file = fs::File::create("/tmp/patient.zip").unwrap();
     /// client().patient_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
     /// ```
-    pub fn patient_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
+    pub fn patient_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
         let path = format!("patients/{}/archive", id);
         self.get_stream(&path, writer)
     }
@@ -351,7 +351,7 @@ impl Client {
     /// let mut file = fs::File::create("/tmp/study.zip").unwrap();
     /// client().study_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
     /// ```
-    pub fn study_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
+    pub fn study_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
         let path = format!("studies/{}/archive", id);
         self.get_stream(&path, writer)?;
         Ok(())
@@ -370,7 +370,7 @@ impl Client {
     /// let mut file = fs::File::create("/tmp/series.zip").unwrap();
     /// client().series_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
     /// ```
-    pub fn series_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
+    pub fn series_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
         let path = format!("series/{}/archive", id);
         self.get_stream(&path, writer)
     }
@@ -386,7 +386,7 @@ impl Client {
     /// let mut file = fs::File::create("/tmp/instance.dcm").unwrap();
     /// client().instance_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
     /// ```
-    pub fn instance_dicom<W: Write>(&self, id: &str, writer: &mut W) -> Result<()> {
+    pub fn instance_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
         let path = format!("instances/{}/file", id);
         self.get_stream(&path, writer)
     }
@@ -528,7 +528,7 @@ impl Client {
         &self,
         id: &str,
         anonymization: Option<Anonymization>,
-        writer: &mut W,
+        writer: W,
     ) -> Result<()> {
         let data = match anonymization {
             Some(a) => a,
@@ -596,7 +596,7 @@ impl Client {
         &self,
         id: &str,
         modification: Modification,
-        writer: &mut W,
+        writer: W,
     ) -> Result<()> {
         self.post_receive_stream(
             &format!("instances/{}/modify", id),
