@@ -1,6 +1,10 @@
 use dicom_object::{open_file, Error as DicomError};
 use maplit::hashmap;
-use orthanc::*;
+use orthanc::entity::*;
+use orthanc::error::ApiError;
+use orthanc::models::*;
+use orthanc::Client;
+use orthanc::Error;
 use regex::Regex;
 use reqwest;
 use serde_json;

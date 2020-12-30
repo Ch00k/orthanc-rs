@@ -22,7 +22,15 @@ comment:
 flags:
   unit_test:
     paths:
+      - src/client.rs
+      - src/entity.rs
+      - src/error.rs
       - src/lib.rs
+      - src/models.rs
   integration_test:
     paths:
+      - src/client.rs
+      - src/entity.rs
+      - src/error.rs
       - src/lib.rs
+      - src/models.rs
