@@ -63,10 +63,7 @@ pub trait Entity: serde::de::DeserializeOwned {
     /// The name of the entity's parent entity. [`None`] if the entity does not have a parent (e.g.
     /// is a `Patient`)
     fn parent_kind_name(&self) -> Option<String> {
-        match self.parent_kind() {
-            Some(k) => Some(format!("{:?}", k)),
-            None => None,
-        }
+        self.parent_kind().map(|k| format!("{:?}", k))
     }
 
     /// Then name of the entity's child entity, pluralized (e.g. "Studies", "Series", "Instances").
