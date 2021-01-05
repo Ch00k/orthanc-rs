@@ -133,3 +133,18 @@ jobs:
         with:
           flags: e2e_test
           fail_ci_if_error: true
+
+  docs:
+    runs-on: ubuntu-latest
+    name: docs
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: prepare rust env
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: build docs
+        run: make doc

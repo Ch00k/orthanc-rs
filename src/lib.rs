@@ -1,4 +1,5 @@
 #![warn(missing_debug_implementations)]
+#![deny(broken_intra_doc_links)]
 
 //! **orthanc-rs** is a client for the [REST API](https://book.orthanc-server.com/users/rest.html)
 //! of [Orthanc](https://book.orthanc-server.com/users/rest.html), an open-source, lightweight
