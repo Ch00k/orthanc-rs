@@ -908,6 +908,31 @@ mod tests {
     }
 
     #[test]
+    fn test_get_stream_error_response_empty_body() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::GET)
+            .expect_path("/foo")
+            .return_status(400)
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let mut writer: Vec<u8> = vec![];
+        let resp = cl.get_stream("foo", &mut writer);
+
+        assert_eq!(
+            resp.unwrap_err(),
+            Error {
+                message: "API error: 400 Bad Request".to_string(),
+                details: None,
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
     fn test_post_error_response() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
@@ -1001,6 +1026,31 @@ mod tests {
                     orthanc_status: 15,
                     orthanc_error: "Bad file format".to_string(),
                 },),
+            },
+        );
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
+    fn test_post_receive_stream_error_response_empty_body() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .return_status(400)
+            .create_on(&mock_server);
+
+        let cl = Client::new(url);
+        let mut writer: Vec<u8> = vec![];
+        let resp = cl.post_receive_stream("foo", serde_json::json!("bar"), &mut writer);
+
+        assert_eq!(
+            resp.unwrap_err(),
+            Error {
+                message: "API error: 400 Bad Request".to_string(),
+                details: None,
             },
         );
         assert_eq!(m.times_called(), 1);
