@@ -27,5 +27,9 @@ regex = "1.4"
 zip = "0.5"
 
 [[test]]
-name = "integration"
-path = "tests/test.rs"
+name = "e2e"
+path = "tests/test_e2e.rs"
+
+[[test]]
+name = "client"
+path = "tests/test_client.rs"

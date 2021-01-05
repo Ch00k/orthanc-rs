@@ -10,8 +10,6 @@ export DINO_SCP_PORT ?= 5252
 export DINO_SCP_AET ?= DINO
 
 
-.PHONY: test clean unit_test integration_test unit_test_coverage integration_test_coverage install_tarpaulin cleanup_orthanc populate_orthanc reset_orthanc start_services stop_services release
-
 build:
 	cargo build
 
@@ -21,22 +19,28 @@ doc:
 serve_doc: doc
 	python -m http.server -b 127.0.0.1 -d target/doc 9001
 
-test: unit_test integration_test
-
 clean: cleanup_orthanc stop_services
 	cargo clean
+
+test: unit_test integration_test e2e_test
 
 unit_test:
 	cargo test --lib -- --show-output ${TEST}
 
+integration_test:
+	cargo test --test client -- --test-threads=1 --show-output ${TEST}
+
+e2e_test: reset_orthanc
+	cargo test --test e2e -- --test-threads=1 --show-output ${TEST}
+
 unit_test_coverage: install_tarpaulin
 	cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
-integration_test: reset_orthanc
-	cargo test --test integration -- --test-threads=1 --show-output ${TEST}
-
-integration_test_coverage: install_tarpaulin reset_orthanc
+integration_test_coverage: install_tarpaulin
 	cargo tarpaulin --test integration --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
+
+e2e_test_coverage: install_tarpaulin reset_orthanc
+	cargo tarpaulin --test e2e --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
 
 install_tarpaulin:
 	cargo install --version 0.16.0 cargo-tarpaulin

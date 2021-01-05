@@ -63,12 +63,13 @@
 //! ```
 
 pub use client::Client;
-pub use error::Error;
+pub use error::{ApiError, Error};
 use std::result;
 
 pub mod client;
 pub mod entity;
 pub mod error;
 pub mod models;
+mod utils;
 
 type Result<T> = result::Result<T, Error>;
