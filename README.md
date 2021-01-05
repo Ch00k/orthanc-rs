@@ -66,8 +66,7 @@ let mut file = fs::File::create("/tmp/study.zip").unwrap();
 client.study_dicom(study_id, &mut file).unwrap();
 ```
 
-Even though the operation is not very efficient, Orthanc allows uploading DICOM files over
-REST API:
+Even though the operation is not very efficient, Orthanc allows uploading DICOM files over REST API:
 
 ```rust
 let data = fs::read("/tmp/instance.dcm").unwrap();
@@ -78,7 +77,15 @@ See `tests` directory for more usage examples.
 
 ## Tests
 
-orthanc-rs is covered by unit as well as integration tests.
+orthanc-rs is covered by unit as well as integration and end-to-end tests.
+
+To run all tests execute
+
+```
+$ make start_services && make test
+```
+
+Running specific test suits separately is described below.
 
 ### Unit
 
@@ -90,21 +97,27 @@ $ make unit_test
 
 ### Integration
 
+To run unit tests execute
+
+```
+$ make integration_test
+```
+
+### End-to-end
+
 Install [docker-compose](https://docs.docker.com/compose) and
 [jq](https://stedolan.github.io/jq) and execute
 
 ```
-$ make start_services && make integration_test
+$ make start_services && make e2e_test
 ```
 
-This will spin up all the necessary services required for integration tests, and run the
-tests.
+This will spin up all the necessary services required for integration tests, and run the tests.
 
-During and after the test run Orthanc web UI is available at http://localhost:8028
-(username: _orthanc_, password: _orthanc_).
+During and after the test run Orthanc web UI is available at http://localhost:8028 (username: _orthanc_, password:
+_orthanc_).
 
-Containers started by `start_services` are left running after the test is finished. To
-stop them execute
+Containers started by `start_services` are left running after the test is finished. To stop them execute
 
 ```
 $ make stop_services
