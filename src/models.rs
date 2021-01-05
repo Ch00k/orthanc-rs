@@ -92,8 +92,9 @@ pub struct Modification {
 /// Returned as response body in DELETE responses to indicate the remaining ancestor of the deleted
 /// entity.
 ///
-/// For example, an ancestor of a deleted [`Instance`] is a [`Series`], an ancestor of a deleted [`Study`] is a
-/// [`Patient`]. [`Patient`] does not have an ancestor.
+/// For example, an ancestor of a deleted [`Instance`](crate::entity::Instance) is a [`Series`](crate::entity::Series),
+/// an ancestor of a deleted [`Study`](crate::entity::Study) is a [`Patient`](crate::entity::Patient).
+/// [`Patient`](crate::entity::Patient) does not have an ancestor.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Ancestor {
