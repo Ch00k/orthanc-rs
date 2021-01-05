@@ -10,8 +10,6 @@ export DINO_SCP_PORT ?= 5252
 export DINO_SCP_AET ?= DINO
 
 
-.PHONY: test clean unit_test integration_test unit_test_coverage integration_test_coverage install_tarpaulin cleanup_orthanc populate_orthanc reset_orthanc start_services stop_services release
-
 build:
 	cargo build
 
