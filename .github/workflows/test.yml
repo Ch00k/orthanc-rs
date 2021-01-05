@@ -31,6 +31,27 @@ jobs:
   integration_test:
     runs-on: ubuntu-latest
     name: integration_test
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: prepare rust env
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: run tests
+        run: make integration_test_coverage
+
+      - name: upload coverage
+        uses: codecov/codecov-action@v1
+        with:
+          flags: integration_test
+          fail_ci_if_error: true
+
+  e2e_test:
+    runs-on: ubuntu-latest
+    name: e2e_test
     strategy:
       matrix:
         orthanc: [1.6.1, 1.7.4, 1.8.2]
@@ -67,11 +88,11 @@ jobs:
           toolchain: stable
 
       - name: run tests
-        run: make integration_test
+        run: make e2e_test
 
-  integration_test_coverage:
+  e2e_test_coverage:
     runs-on: ubuntu-latest
-    name: integration_test_coverage
+    name: e2e_test_coverage
     services:
       orthanc:
         image: jodogne/orthanc:1.8.2
@@ -105,10 +126,10 @@ jobs:
           toolchain: stable
 
       - name: run tests
-        run: make integration_test_coverage
+        run: make e2e_test_coverage
 
       - name: upload coverage
         uses: codecov/codecov-action@v1
         with:
-          flags: integration_test
+          flags: e2e_test
           fail_ci_if_error: true

@@ -27,6 +27,7 @@ flags:
       - src/error.rs
       - src/lib.rs
       - src/models.rs
+      - src/utils.rs
   integration_test:
     paths:
       - src/client.rs
@@ -34,3 +35,12 @@ flags:
       - src/error.rs
       - src/lib.rs
       - src/models.rs
+      - src/utils.rs
+  e2e_test:
+    paths:
+      - src/client.rs
+      - src/entity.rs
+      - src/error.rs
+      - src/lib.rs
+      - src/models.rs
+      - src/utils.rs
