@@ -9,7 +9,7 @@
 //!
 //! ```ini
 //! [dependencies]
-//! orthanc = "0.6.1"
+//! orthanc = "0.7.0"
 //! ```
 //!
 //! ## Usage
