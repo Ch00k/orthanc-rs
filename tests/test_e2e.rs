@@ -211,22 +211,6 @@ fn test_get_system_info() {
 }
 
 #[test]
-fn test_list_modalities() {
-    assert_eq!(
-        json!(client().modalities().unwrap()),
-        expected_response("modalities")
-    );
-}
-
-#[test]
-fn test_list_modalities_expanded() {
-    assert_eq!(
-        json!(client().modalities_expanded().unwrap()),
-        expected_response("modalities?expand")
-    );
-}
-
-#[test]
 fn test_list_patients() {
     assert_eq!(
         json!(client().patients().unwrap()),
@@ -1100,7 +1084,7 @@ fn test_get_dicom_tag_value_instance() {
 }
 
 #[test]
-fn test_create_modify_delete_modality() {
+fn test_modalities() {
     // Get system info
     let sysinfo = client().system().unwrap();
     let mut allow_transcoding = None;
@@ -1109,7 +1093,7 @@ fn test_create_modify_delete_modality() {
     }
 
     // Create
-    let modality = Modality {
+    let modality_1 = Modality {
         aet: "foobar".to_string(),
         host: "1.2.3.4".to_string(),
         port: 4217,
@@ -1123,7 +1107,7 @@ fn test_create_modify_delete_modality() {
         allow_n_event_report: None,
         allow_transcoding: None,
     };
-    assert_eq!(client().create_modality("bazqux", modality).unwrap(), ());
+    assert_eq!(client().create_modality("bazqux", modality_1).unwrap(), ());
     let mut created: bool = false;
     for (m_name, m_config) in client().modalities_expanded().unwrap() {
         if m_name == "bazqux" {
@@ -1150,6 +1134,36 @@ fn test_create_modify_delete_modality() {
     if !created {
         panic!("Modality not created");
     };
+
+    // Create another one for listing
+    let modality_2 = Modality {
+        aet: "garble".to_string(),
+        host: "9.8.7.6".to_string(),
+        port: 1742,
+        manufacturer: Some("GE".to_string()),
+        allow_c_echo: Some(false),
+        allow_c_find: Some(false),
+        allow_c_get: Some(false),
+        allow_c_move: Some(false),
+        allow_c_store: Some(false),
+        allow_n_action: Some(false),
+        allow_n_event_report: Some(false),
+        allow_transcoding,
+    };
+    assert_eq!(client().create_modality("garble", modality_2).unwrap(), ());
+
+    // List
+    assert_eq!(
+        json!(client().modalities().unwrap()),
+        expected_response("modalities")
+    );
+
+    // List expanded
+    assert_eq!(
+        json!(client().modalities_expanded().unwrap()),
+        expected_response("modalities?expand")
+    );
+    println!("{:#?}", client().modalities_expanded().unwrap());
 
     // Modify
     let modality = Modality {
@@ -1201,6 +1215,129 @@ fn test_create_modify_delete_modality() {
 }
 
 #[test]
+fn _test_peers() {
+    // Create
+    let peer_1 = Peer {
+        url: "http://orthanc_peer:8029".to_string(),
+        username: Some("orthanc".to_string()),
+        password: Some("orthanc".to_string()),
+        http_headers: Some(
+            hashmap! {"Foo".to_string() => "foo".to_string(), "Bar".to_string() => "bar".to_string()},
+        ),
+        certificate_file: None,
+        certificate_key_file: None,
+        certificate_key_password: None,
+    };
+
+    assert_eq!(client().create_peer("foobar", peer_1).unwrap(), ());
+    let mut created: bool = false;
+    for (p_name, p_config) in client().peers_expanded().unwrap() {
+        if p_name == "foobar" {
+            assert_eq!(
+                p_config,
+                Peer {
+                    url: "http://orthanc_peer:8029/".to_string(),
+                    username: Some("orthanc".to_string()),
+                    password: None, // empty for security reasons
+                    http_headers: None,
+                    certificate_file: None,
+                    certificate_key_file: None,
+                    certificate_key_password: None,
+                }
+            );
+            created = true;
+        }
+    }
+    if !created {
+        panic!("Peer not created");
+    };
+
+    // Create another one for listing
+    let peer_2 = Peer {
+        url: "http://orthanc_peer:8092".to_string(),
+        username: None,
+        password: None,
+        http_headers: None,
+        certificate_file: None,
+        certificate_key_file: None,
+        certificate_key_password: None,
+    };
+    assert_eq!(client().create_peer("garble", peer_2).unwrap(), ());
+
+    // List
+    assert_eq!(json!(client().peers().unwrap()), expected_response("peers"));
+
+    // List expanded
+    // TODO: Expanded list JSON omits all the `null` fields, while our deserialization does not.
+    // Is there a simpler way to do the assertion?
+    let list = client().peers_expanded().unwrap();
+    assert_eq!(list.len(), 2);
+    assert_eq!(
+        list.get("foobar").unwrap(),
+        &Peer {
+            url: "http://orthanc_peer:8029/".to_string(),
+            username: Some("orthanc".to_string()),
+            password: None, // empty for security reasons
+            http_headers: None,
+            certificate_file: None,
+            certificate_key_file: None,
+            certificate_key_password: None,
+        },
+    );
+    assert_eq!(
+        list.get("garble").unwrap(),
+        &Peer {
+            url: "http://orthanc_peer:8092/".to_string(),
+            username: None,
+            password: None,
+            http_headers: None,
+            certificate_file: None,
+            certificate_key_file: None,
+            certificate_key_password: None,
+        }
+    );
+
+    // Modify
+    let peer = Peer {
+        url: "http://random_peer:1234".to_string(),
+        username: Some("foo".to_string()),
+        password: Some("bar".to_string()),
+        http_headers: None,
+        certificate_file: None,
+        certificate_key_file: None,
+        certificate_key_password: None,
+    };
+
+    assert_eq!(client().modify_peer("foobar", peer).unwrap(), ());
+    let mut modified: bool = false;
+    for (p_name, p_config) in client().peers_expanded().unwrap() {
+        if p_name == "foobar" {
+            assert_eq!(
+                p_config,
+                Peer {
+                    url: "http://random_peer:1234/".to_string(),
+                    username: Some("foo".to_string()),
+                    password: None, // empty for security reasons
+                    http_headers: None,
+                    certificate_file: None,
+                    certificate_key_file: None,
+                    certificate_key_password: None,
+                }
+            );
+            modified = true;
+        }
+    }
+    if !modified {
+        panic!("Peer not modified");
+    }
+
+    // Delete
+    assert_eq!(client().delete_peer("foobar").unwrap(), ());
+    let peers = client().peers_expanded().unwrap();
+    assert!(!peers.contains_key("foobar"));
+}
+
+#[test]
 fn test_modality_echo() {
     let modality = Modality {
         aet: env::var("DINO_SCP_AET").unwrap_or(DEFAULT_DINO_AET.to_string()),
@@ -1246,8 +1383,8 @@ fn test_modality_store() {
     client().create_modality("dino", modality).unwrap();
 
     assert_eq!(
-        client().store("dino", &[&first_study()]).unwrap(),
-        StoreResult {
+        client().modality_store("dino", &[&first_study()]).unwrap(),
+        ModalityStoreResult {
             description: "REST API".to_string(),
             local_aet: "ORTHANC".to_string(),
             remote_aet: "DINO".to_string(),
@@ -1256,6 +1393,29 @@ fn test_modality_store() {
             failed_instances_count: 0,
         }
     );
+}
+
+#[test]
+fn test_peer_store() {
+    let peer = Peer {
+        url: "http://orthanc_peer:8042".to_string(),
+        username: Some("orthanc".to_string()),
+        password: Some("orthanc".to_string()),
+        http_headers: None,
+        certificate_file: None,
+        certificate_key_file: None,
+        certificate_key_password: None,
+    };
+    client().create_peer("orthanc_peer", peer).unwrap();
+
+    let peer_client = Client::new("http://localhost:8029").auth("orthanc", "orthanc");
+    assert_eq!(peer_client.studies().unwrap().len(), 0);
+
+    client()
+        .peer_store("orthanc_peer", &[&first_study()])
+        .unwrap();
+
+    assert_eq!(peer_client.studies().unwrap().len(), 1);
 }
 
 #[test]

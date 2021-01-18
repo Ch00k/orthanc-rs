@@ -1,10 +1,15 @@
 version: "3"
 
 services:
-  orthanc:
+  orthanc_main:
     image: jodogne/orthanc:1.8.2
     ports:
       - 8028:8042
+
+  orthanc_peer:
+    image: jodogne/orthanc:1.8.2
+    ports:
+      - 8029:8042
 
   dino:
     image: ch00k/dino

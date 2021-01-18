@@ -129,7 +129,6 @@ $ make stop_services
 * Split/merge studies (`/studies/<id>/{split,merge}`)
 * C-MOVE (`/modalities/<id>/move`)
 * C-FIND (`/modalities/<id>/query`)
-* Peers API (`/peers`)
 * Tools API (`/tools`)
 * Log API (`/changes`, `/exports`)
 * Asynchronous requests (`/jobs`)

@@ -78,6 +78,26 @@ fn test_list_modalities() {
 }
 
 #[test]
+fn test_list_peers() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/peers")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(r#"["foo", "bar", "baz"]"#)
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let peers = cl.peers().unwrap();
+
+    assert_eq!(peers, ["foo", "bar", "baz"]);
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
 fn test_list_patients() {
     let mock_server = MockServer::start();
     let url = mock_server.url("");
@@ -237,6 +257,72 @@ fn test_list_modalities_expanded() {
                 allow_n_action: Some(false),
                 allow_n_event_report: Some(false),
                 allow_transcoding: Some(false),
+            }
+        },
+    );
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_list_peers_expanded() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/peers")
+        .expect_query_param_exists("expand")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(
+            r#"
+                {
+                    "foobar": {
+                        "HttpHeaders": [
+                            "Bar",
+                            "Foo"
+                        ],
+                        "Password": null,
+                        "Pkcs11": false,
+                        "Url": "http://orthanc_peer:8029/",
+                        "Username": "orthanc"
+                    },
+                    "garble": {
+                        "HttpHeaders": [],
+                        "Pkcs11": false,
+                        "Url": "http://orthanc_peer:8092/",
+                        "CertificateFile": "foo",
+                        "CertificateKeyFile": "bar",
+                        "CertificateKeyPassword": null
+                    }
+                }
+            "#,
+        )
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let peers = cl.peers_expanded().unwrap();
+
+    assert_eq!(
+        peers,
+        hashmap! {
+            "foobar".to_string() => Peer {
+                url: "http://orthanc_peer:8029/".to_string(),
+                username: Some("orthanc".to_string()),
+                password: None, // empty for security reasons
+                http_headers: None,
+                certificate_file: None,
+                certificate_key_file: None,
+                certificate_key_password: None,
+            },
+            "garble".to_string() => Peer {
+                url: "http://orthanc_peer:8092/".to_string(),
+                username: None,
+                password: None,
+                http_headers: None,
+                certificate_file: Some("foo".to_string()),
+                certificate_key_file: Some("bar".to_string()),
+                certificate_key_password: None,
             }
         },
     );
@@ -1180,7 +1266,7 @@ fn test_get_instance_dicom() {
 }
 
 #[test]
-fn test_store() {
+fn test_modality_store() {
     let mock_server = MockServer::start();
     let url = mock_server.url("");
 
@@ -1205,14 +1291,54 @@ fn test_store() {
         .create_on(&mock_server);
 
     let cl = Client::new(url);
-    let resp = cl.store("them", &["bar", "baz", "qux"]).unwrap();
+    let resp = cl.modality_store("them", &["bar", "baz", "qux"]).unwrap();
 
     assert_eq!(
         resp,
-        StoreResult {
+        ModalityStoreResult {
             description: "REST API".to_string(),
             local_aet: "US".to_string(),
             remote_aet: "THEM".to_string(),
+            parent_resources: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
+            instances_count: 42,
+            failed_instances_count: 17
+        }
+    );
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_peer_store() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/peers/foobar/store")
+        //.expect_body(r#"["bar", "baz", "qux"]"#)
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(
+            r#"
+                    {
+                       "Description" : "REST API",
+                       "FailedInstancesCount" : 17,
+                       "InstancesCount" : 42,
+                       "ParentResources" : [ "bar", "baz", "qux" ],
+                       "Peer": [ "foobar" ]
+                    }
+                "#,
+        )
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let resp = cl.peer_store("foobar", &["bar", "baz", "qux"]).unwrap();
+
+    assert_eq!(
+        resp,
+        PeerStoreResult {
+            description: "REST API".to_string(),
+            peer: vec!["foobar".to_string()],
             parent_resources: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
             instances_count: 42,
             failed_instances_count: 17
@@ -1958,6 +2084,111 @@ fn test_delete_modality() {
 
     let cl = Client::new(url);
     let resp = cl.delete_modality("bazqux").unwrap();
+
+    assert_eq!(resp, ());
+    assert_eq!(m.times_called(), 1);
+}
+
+// The following 2 tests are exactly the same except one calls `create_peer`,
+// the other one calls `modify_peer`.
+#[test]
+fn test_create_peer() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::PUT)
+        .expect_path("/peers/bazqux")
+        .expect_json_body(
+            &Peer {
+                url: "http://orthanc_peer:8029".to_string(),
+                username: Some("orthanc".to_string()),
+                password: Some("orthanc".to_string()),
+                http_headers: Some(
+                    hashmap! {"Foo".to_string() => "foo".to_string(), "Bar".to_string() => "bar".to_string()},
+                ),
+                certificate_file: None,
+                certificate_key_file: None,
+                certificate_key_password: None,
+        })
+        .return_status(200)
+        .return_body("")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let peer = Peer {
+        url: "http://orthanc_peer:8029".to_string(),
+        username: Some("orthanc".to_string()),
+        password: Some("orthanc".to_string()),
+        http_headers: Some(
+            hashmap! {"Foo".to_string() => "foo".to_string(), "Bar".to_string() => "bar".to_string()},
+        ),
+        certificate_file: None,
+        certificate_key_file: None,
+        certificate_key_password: None,
+    };
+    let resp = cl.create_peer("bazqux", peer).unwrap();
+
+    assert_eq!(resp, ());
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_modify_peer() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::PUT)
+        .expect_path("/peers/bazqux")
+        .expect_json_body(
+            &Peer {
+                url: "http://orthanc_peer:8029".to_string(),
+                username: Some("orthanc".to_string()),
+                password: Some("orthanc".to_string()),
+                http_headers: Some(
+                    hashmap! {"Foo".to_string() => "foo".to_string(), "Bar".to_string() => "bar".to_string()},
+                ),
+                certificate_file: None,
+                certificate_key_file: None,
+                certificate_key_password: None,
+        })
+        .return_status(200)
+        .return_body("")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let peer = Peer {
+        url: "http://orthanc_peer:8029".to_string(),
+        username: Some("orthanc".to_string()),
+        password: Some("orthanc".to_string()),
+        http_headers: Some(
+            hashmap! {"Foo".to_string() => "foo".to_string(), "Bar".to_string() => "bar".to_string()},
+        ),
+        certificate_file: None,
+        certificate_key_file: None,
+        certificate_key_password: None,
+    };
+    let resp = cl.modify_peer("bazqux", peer).unwrap();
+
+    assert_eq!(resp, ());
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_delete_peer() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::DELETE)
+        .expect_path("/peers/bazqux")
+        .return_status(200)
+        .return_body("")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let resp = cl.delete_peer("bazqux").unwrap();
 
     assert_eq!(resp, ());
     assert_eq!(m.times_called(), 1);

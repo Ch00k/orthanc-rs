@@ -53,6 +53,27 @@ pub struct Modality {
     pub allow_transcoding: Option<bool>,
 }
 
+/// Peer
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Peer {
+    pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    // https://bugs.orthanc-server.com/show_bug.cgi?id=191
+    // TODO: Make a custom serializer/deserializer that would deal with differing types
+    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
+    pub http_headers: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certificate_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certificate_key_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certificate_key_password: Option<String>,
+}
+
 /// Anonymization request body
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Anonymization {
@@ -135,13 +156,24 @@ pub struct UploadResult {
     pub parent_series: String,
 }
 
-/// Result of a C-STORE request (sending entities to a modality)
+/// Result of a C-STORE DICOM request (sending entities to a modality)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct StoreResult {
+pub struct ModalityStoreResult {
     pub description: String,
     pub local_aet: String,
     pub remote_aet: String,
+    pub parent_resources: Vec<String>,
+    pub instances_count: u64,
+    pub failed_instances_count: u64,
+}
+
+/// Result of a peer store request (sending entities to a peer)
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct PeerStoreResult {
+    pub description: String,
+    pub peer: Vec<String>,
     pub parent_resources: Vec<String>,
     pub instances_count: u64,
     pub failed_instances_count: u64,
@@ -237,6 +269,36 @@ mod tests {
                 dicom_version: None,
                 force: None
             }
+        );
+    }
+
+    #[test]
+    fn test_peer_deserialize() {
+        let json = r#"
+            {
+                "HttpHeaders": [
+                    "Bar",
+                    "Foo"
+                ],
+                "Password": null,
+                "Pkcs11": false,
+                "Url": "http://orthanc_peer:8029/",
+                "Username": "orthanc"
+            }
+        "#;
+
+        let p: Peer = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            p,
+            Peer {
+                url: "http://orthanc_peer:8029/".to_string(),
+                username: Some("orthanc".to_string()),
+                password: None, // empty for security reasons
+                http_headers: None,
+                certificate_file: None,
+                certificate_key_file: None,
+                certificate_key_password: None,
+            },
         );
     }
 }
