@@ -56,10 +56,14 @@ jobs:
       matrix:
         orthanc: [1.6.1, 1.7.4, 1.8.2]
     services:
-      orthanc:
-        image: jodogne/orthanc:${{matrix.orthanc}}
+      orthanc_main:
+        image: jodogne/orthanc:1.8.2
         ports:
           - 8028:8042
+      orthanc_peer:
+        image: jodogne/orthanc:1.8.2
+        ports:
+          - 8029:8042
       dino:
         image: ch00k/dino
         env:
@@ -94,10 +98,14 @@ jobs:
     runs-on: ubuntu-latest
     name: e2e_test_coverage
     services:
-      orthanc:
+      orthanc_main:
         image: jodogne/orthanc:1.8.2
         ports:
           - 8028:8042
+      orthanc_peer:
+        image: jodogne/orthanc:1.8.2
+        ports:
+          - 8029:8042
       dino:
         image: ch00k/dino
         env:

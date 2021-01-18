@@ -199,6 +199,11 @@ impl Client {
         self.list("modalities")
     }
 
+    /// List peers
+    pub fn peers(&self) -> Result<Vec<String>> {
+        self.list("peers")
+    }
+
     /// List patients
     pub fn patients(&self) -> Result<Vec<String>> {
         self.list("patients")
@@ -223,6 +228,13 @@ impl Client {
     pub fn modalities_expanded(&self) -> Result<HashMap<String, Modality>> {
         let resp = self.get("modalities?expand")?;
         let json: HashMap<String, Modality> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// List all peers in an expanded format
+    pub fn peers_expanded(&self) -> Result<HashMap<String, Peer>> {
+        let resp = self.get("peers?expand")?;
+        let json: HashMap<String, Peer> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -435,19 +447,6 @@ impl Client {
         .map(|_| ())
     }
 
-    /// Send a C-STORE request to a remote modality
-    ///
-    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
-    /// [`Series`] or [`Instance`]
-    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResult> {
-        let resp = self.post(
-            &format!("modalities/{}/store", modality),
-            serde_json::json!(ids),
-        )?;
-        let json: StoreResult = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
     fn anonymize(
         &self,
         entity: &str,
@@ -642,6 +641,51 @@ impl Client {
     /// Delete a modality
     pub fn delete_modality(&self, name: &str) -> Result<()> {
         self.delete(&format!("modalities/{}", name)).map(|_| ())
+    }
+
+    /// Send a C-STORE DICOM request to a remote modality
+    ///
+    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
+    /// [`Series`] or [`Instance`]
+    pub fn modality_store(
+        &self,
+        modality: &str,
+        ids: &[&str],
+    ) -> Result<ModalityStoreResult> {
+        let resp = self.post(
+            &format!("modalities/{}/store", modality),
+            serde_json::json!(ids),
+        )?;
+        let json: ModalityStoreResult = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    // TODO: The following two methods are exactly the same
+    /// Create a peer
+    pub fn create_peer(&self, name: &str, peer: Peer) -> Result<()> {
+        self.put(&format!("peers/{}", name), serde_json::to_value(peer)?)
+            .map(|_| ())
+    }
+
+    /// Modify a peer
+    pub fn modify_peer(&self, name: &str, peer: Peer) -> Result<()> {
+        self.put(&format!("peers/{}", name), serde_json::to_value(peer)?)
+            .map(|_| ())
+    }
+
+    /// Delete a peer
+    pub fn delete_peer(&self, name: &str) -> Result<()> {
+        self.delete(&format!("peers/{}", name)).map(|_| ())
+    }
+
+    /// Send entities to a peer
+    ///
+    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
+    /// [`Series`] or [`Instance`]
+    pub fn peer_store(&self, peer: &str, ids: &[&str]) -> Result<PeerStoreResult> {
+        let resp = self.post(&format!("peers/{}/store", peer), serde_json::json!(ids))?;
+        let json: PeerStoreResult = serde_json::from_slice(&resp)?;
+        Ok(json)
     }
 
     /// Search for Entities in Orthanc

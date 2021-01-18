@@ -21,6 +21,24 @@ cleanup() {
         echo $delete_curl_command
         $delete_curl_command
     done
+
+    modalities_curl_command="$curl_command $ORC_ORTHANC_ADDRESS/modalities"
+    modalities=($($modalities_curl_command | jq -c '.[]' | tr -d '"'))
+
+    for modality in "${modalities[@]}"; do
+        delete_curl_command="$modalities_curl_command/$modality -X DELETE"
+        echo $delete_curl_command
+        $delete_curl_command
+    done
+
+    peers_curl_command="$curl_command $ORC_ORTHANC_ADDRESS/peers"
+    peers=($($peers_curl_command | jq -c '.[]' | tr -d '"'))
+
+    for peer in "${peers[@]}"; do
+        delete_curl_command="$peers_curl_command/$peer -X DELETE"
+        echo $delete_curl_command
+        $delete_curl_command
+    done
 }
 
 cleanup
