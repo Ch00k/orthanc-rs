@@ -1308,6 +1308,46 @@ fn test_modality_store() {
 }
 
 #[test]
+fn test_peer_store() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/peers/foobar/store")
+        //.expect_body(r#"["bar", "baz", "qux"]"#)
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(
+            r#"
+                    {
+                       "Description" : "REST API",
+                       "FailedInstancesCount" : 17,
+                       "InstancesCount" : 42,
+                       "ParentResources" : [ "bar", "baz", "qux" ],
+                       "Peer": [ "foobar" ]
+                    }
+                "#,
+        )
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let resp = cl.peer_store("foobar", &["bar", "baz", "qux"]).unwrap();
+
+    assert_eq!(
+        resp,
+        PeerStoreResult {
+            description: "REST API".to_string(),
+            peer: vec!["foobar".to_string()],
+            parent_resources: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
+            instances_count: 42,
+            failed_instances_count: 17
+        }
+    );
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
 fn test_modify_patient() {
     let mock_server = MockServer::start();
     let url = mock_server.url("");
