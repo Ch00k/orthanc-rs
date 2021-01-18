@@ -156,7 +156,7 @@ pub struct UploadResult {
     pub parent_series: String,
 }
 
-/// Result of a C-STORE request (sending entities to a modality)
+/// Result of a C-STORE DICOM request (sending entities to a modality)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ModalityStoreResult {
@@ -168,7 +168,7 @@ pub struct ModalityStoreResult {
     pub failed_instances_count: u64,
 }
 
-/// Result of a C-STORE request (sending entities to a modality)
+/// Result of a peer store request (sending entities to a peer)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct PeerStoreResult {
