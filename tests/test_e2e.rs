@@ -1396,6 +1396,29 @@ fn test_modality_store() {
 }
 
 #[test]
+fn test_peer_store() {
+    let peer = Peer {
+        url: "http://orthanc_peer:8042".to_string(),
+        username: Some("orthanc".to_string()),
+        password: Some("orthanc".to_string()),
+        http_headers: None,
+        certificate_file: None,
+        certificate_key_file: None,
+        certificate_key_password: None,
+    };
+    client().create_peer("orthanc_peer", peer).unwrap();
+
+    let peer_client = Client::new("http://localhost:8029").auth("orthanc", "orthanc");
+    assert_eq!(peer_client.studies().unwrap().len(), 0);
+
+    client()
+        .peer_store("orthanc_peer", &[&first_study()])
+        .unwrap();
+
+    assert_eq!(peer_client.studies().unwrap().len(), 1);
+}
+
+#[test]
 fn test_search_patient_level() {
     let res: Vec<Patient> = client()
         .search(hashmap! {"PatientID".to_string() => PATIENT_ID.to_string()})
