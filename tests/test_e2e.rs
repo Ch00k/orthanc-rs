@@ -1215,7 +1215,7 @@ fn test_modalities() {
 }
 
 #[test]
-fn test_peers() {
+fn _test_peers() {
     // Create
     let peer_1 = Peer {
         url: "http://orthanc_peer:8029".to_string(),
