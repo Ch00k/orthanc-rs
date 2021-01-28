@@ -25,7 +25,12 @@ delete() {
     done
 }
 
-delete $ORC_ORTHANC_ADDRESS patients
-delete $ORC_ORTHANC_ADDRESS modalities
-delete $ORC_ORTHANC_ADDRESS peers
-delete $ORC_ORTHANC_PEER_ADDRESS patients
+ADDRESS_HOST=http://localhost
+PORTS=( $ORC_MAIN_PORT $ORC_PEER_PORT $ORC_MODALITY_ONE_PORT $ORC_MODALITY_TWO_PORT )
+
+for port in "${PORTS[@]}"
+do
+    delete $ADDRESS_HOST:$port patients
+    delete $ADDRESS_HOST:$port modalities
+    delete $ADDRESS_HOST:$port peers
+done

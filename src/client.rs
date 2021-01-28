@@ -447,6 +447,17 @@ impl Client {
         .map(|_| ())
     }
 
+    /// Send a C-MOVE request to a remote modality
+    ///
+    /// If no error is returned, the request was successful
+    pub fn modality_move(&self, modality: &str, move_request: Move) -> Result<()> {
+        self.post(
+            &format!("modalities/{}/move", modality),
+            serde_json::to_value(move_request)?,
+        )
+        .map(|_| ())
+    }
+
     fn anonymize(
         &self,
         entity: &str,

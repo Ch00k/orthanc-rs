@@ -143,6 +143,17 @@ pub struct Search {
     pub expand: Option<bool>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Move {
+    pub level: EntityKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_aet: Option<String>,
+    pub resources: Vec<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<i32>,
+}
+
 /// Result of a DICOM upload request
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]

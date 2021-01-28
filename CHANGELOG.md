@@ -8,6 +8,7 @@
 
 * Implemented peer operations (CRUD and storing) [#72](https://github.com/Ch00k/orthanc-rs/pull/72),
   [#75](https://github.com/Ch00k/orthanc-rs/pull/75)
+* Implemented C-MOVE (`modalities/foo/move`) [#74](https://github.com/Ch00k/orthanc-rs/pull/74)
 
 ## [0.7.0](https://github.com/Ch00k/orthanc-rs/compare/0.6.1...0.7.0) 2021-01-06
 

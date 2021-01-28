@@ -6,6 +6,19 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  ORC_MAIN_PORT: 8028
+  ORC_PEER_PORT: 8029
+  ORC_MODALITY_ONE_PORT: 8021
+  ORC_MODALITY_TWO_PORT: 8022
+  ORC_ORTHANC_USERNAME: orthanc
+  ORC_ORTHANC_PASSWORD: orthanc
+  ORC_DATAFILES_PATH: /tmp/orc_test_data
+
+  DINO_SCP_HOST: 0.0.0.0
+  DINO_SCP_PORT: 5252
+  DINO_SCP_AET: DINO
+
 jobs:
   unit_test:
     runs-on: ubuntu-latest
@@ -64,6 +77,14 @@ jobs:
         image: jodogne/orthanc:1.8.2
         ports:
           - 8029:8042
+      modality_one:
+        image: jodogne/orthanc:1.8.2
+        ports:
+          - 8021:8042
+      modality_two:
+        image: jodogne/orthanc:1.8.2
+        ports:
+          - 8022:8042
       dino:
         image: ch00k/dino
         env:
@@ -72,15 +93,6 @@ jobs:
           DINO_SCP_AET: ${{env.DINO_SCP_AET}}
         ports:
           - 5252:5252
-
-    env:
-      ORC_ORTHANC_ADDRESS: http://localhost:8028
-      ORC_ORTHANC_USERNAME: orthanc
-      ORC_ORTHANC_PASSWORD: orthanc
-      ORC_DATAFILES_PATH: /tmp/orc_test_data
-      DINO_SCP_HOST: 0.0.0.0
-      DINO_SCP_PORT: 5252
-      DINO_SCP_AET: DINO
 
     steps:
       - name: checkout
@@ -106,6 +118,14 @@ jobs:
         image: jodogne/orthanc:1.8.2
         ports:
           - 8029:8042
+      modality_one:
+        image: jodogne/orthanc:1.8.2
+        ports:
+          - 8021:8042
+      modality_two:
+        image: jodogne/orthanc:1.8.2
+        ports:
+          - 8022:8042
       dino:
         image: ch00k/dino
         env:
@@ -114,15 +134,6 @@ jobs:
           DINO_SCP_AET: ${{env.DINO_SCP_AET}}
         ports:
           - 5252:5252
-
-    env:
-      ORC_ORTHANC_ADDRESS: http://localhost:8028
-      ORC_ORTHANC_USERNAME: orthanc
-      ORC_ORTHANC_PASSWORD: orthanc
-      ORC_DATAFILES_PATH: /tmp/orc_test_data
-      DINO_SCP_HOST: 0.0.0.0
-      DINO_SCP_PORT: 5252
-      DINO_SCP_AET: DINO
 
     steps:
       - name: checkout

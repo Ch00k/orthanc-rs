@@ -127,7 +127,6 @@ $ make stop_services
 
 * Instance images (`/instances/<id>/{preview,image-uint8,image-uint16}`)
 * Split/merge studies (`/studies/<id>/{split,merge}`)
-* C-MOVE (`/modalities/<id>/move`)
 * C-FIND (`/modalities/<id>/query`)
 * Tools API (`/tools`)
 * Log API (`/changes`, `/exports`)
