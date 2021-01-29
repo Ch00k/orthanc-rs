@@ -1291,11 +1291,11 @@ fn test_modality_store() {
         .create_on(&mock_server);
 
     let cl = Client::new(url);
-    let resp = cl.modality_store("them", &["bar", "baz", "qux"]).unwrap();
+    let resp = cl.store("them", &["bar", "baz", "qux"]).unwrap();
 
     assert_eq!(
         resp,
-        ModalityStoreResult {
+        StoreResult {
             description: "REST API".to_string(),
             local_aet: "US".to_string(),
             remote_aet: "THEM".to_string(),
