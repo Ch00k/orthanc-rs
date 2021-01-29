@@ -85,6 +85,8 @@ impl Client {
         }
     }
 
+    ////////// HTTP //////////
+
     fn get(&self, path: &str) -> Result<Bytes> {
         let url = format!("{}/{}", self.server, &path);
         let mut request = self.client.get(&url);
@@ -187,41 +189,50 @@ impl Client {
         Ok(json)
     }
 
-    /// System information
-    pub fn system(&self) -> Result<System> {
-        let resp = self.get("system")?;
-        let json: System = serde_json::from_slice(&resp)?;
+    fn anonymize(
+        &self,
+        entity: &str,
+        id: &str,
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        let data = match anonymization {
+            Some(a) => a,
+            // TODO: Just pass an empty object?
+            None => Anonymization {
+                replace: None,
+                keep: None,
+                keep_private_tags: None,
+                dicom_version: None,
+                force: None,
+            },
+        };
+        let resp = self.post(
+            &format!("{}/{}/anonymize", entity, id),
+            serde_json::to_value(data)?,
+        )?;
+        let json: ModificationResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
+
+    fn modify(
+        &self,
+        entity: &str,
+        id: &str,
+        modification: Modification,
+    ) -> Result<ModificationResult> {
+        let resp = self.post(
+            &format!("{}/{}/modify", entity, id),
+            serde_json::to_value(modification)?,
+        )?;
+        let json: ModificationResult = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    ////////// Modalities //////////
 
     /// List modalities
     pub fn modalities(&self) -> Result<Vec<String>> {
         self.list("modalities")
-    }
-
-    /// List peers
-    pub fn peers(&self) -> Result<Vec<String>> {
-        self.list("peers")
-    }
-
-    /// List patients
-    pub fn patients(&self) -> Result<Vec<String>> {
-        self.list("patients")
-    }
-
-    /// List studies
-    pub fn studies(&self) -> Result<Vec<String>> {
-        self.list("studies")
-    }
-
-    /// List series
-    pub fn series_list(&self) -> Result<Vec<String>> {
-        self.list("series")
-    }
-
-    /// List instances
-    pub fn instances(&self) -> Result<Vec<String>> {
-        self.list("instances")
     }
 
     /// List all modalities in an expanded format
@@ -231,6 +242,76 @@ impl Client {
         Ok(json)
     }
 
+    // TODO: The following two methods are exactly the same
+    /// Create a modality
+    pub fn create_modality(&self, name: &str, modality: Modality) -> Result<()> {
+        self.put(
+            &format!("modalities/{}", name),
+            serde_json::to_value(modality)?,
+        )
+        .map(|_| ())
+    }
+
+    /// Modify a modality
+    pub fn modify_modality(&self, name: &str, modality: Modality) -> Result<()> {
+        self.put(
+            &format!("modalities/{}", name),
+            serde_json::to_value(modality)?,
+        )
+        .map(|_| ())
+    }
+
+    /// Delete a modality
+    pub fn delete_modality(&self, name: &str) -> Result<()> {
+        self.delete(&format!("modalities/{}", name)).map(|_| ())
+    }
+
+    /// Send a C-ECHO request to a remote modality
+    ///
+    /// If no error is returned, the request was successful
+    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
+        let mut data = HashMap::new();
+        if let Some(to) = timeout {
+            data.insert("Timeout", to);
+        }
+        self.post(
+            &format!("modalities/{}/echo", modality),
+            serde_json::json!(data),
+        )
+        .map(|_| ())
+    }
+
+    /// Send a C-STORE DICOM request to a remote modality
+    ///
+    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
+    /// [`Series`] or [`Instance`]
+    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResult> {
+        let resp = self.post(
+            &format!("modalities/{}/store", modality),
+            serde_json::json!(ids),
+        )?;
+        let json: StoreResult = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// Send a C-MOVE request to a remote modality
+    ///
+    /// If no error is returned, the request was successful
+    pub fn modality_move(&self, modality: &str, move_request: Move) -> Result<()> {
+        self.post(
+            &format!("modalities/{}/move", modality),
+            serde_json::to_value(move_request)?,
+        )
+        .map(|_| ())
+    }
+
+    ////////// Peers //////////
+
+    /// List peers
+    pub fn peers(&self) -> Result<Vec<String>> {
+        self.list("peers")
+    }
+
     /// List all peers in an expanded format
     pub fn peers_expanded(&self) -> Result<HashMap<String, Peer>> {
         let resp = self.get("peers?expand")?;
@@ -238,31 +319,45 @@ impl Client {
         Ok(json)
     }
 
+    // TODO: The following two methods are exactly the same
+    /// Create a peer
+    pub fn create_peer(&self, name: &str, peer: Peer) -> Result<()> {
+        self.put(&format!("peers/{}", name), serde_json::to_value(peer)?)
+            .map(|_| ())
+    }
+
+    /// Modify a peer
+    pub fn modify_peer(&self, name: &str, peer: Peer) -> Result<()> {
+        self.put(&format!("peers/{}", name), serde_json::to_value(peer)?)
+            .map(|_| ())
+    }
+
+    /// Delete a peer
+    pub fn delete_peer(&self, name: &str) -> Result<()> {
+        self.delete(&format!("peers/{}", name)).map(|_| ())
+    }
+
+    /// Send entities to a peer
+    ///
+    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
+    /// [`Series`] or [`Instance`]
+    pub fn peer_store(&self, peer: &str, ids: &[&str]) -> Result<PeerStoreResult> {
+        let resp = self.post(&format!("peers/{}/store", peer), serde_json::json!(ids))?;
+        let json: PeerStoreResult = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    ////////// Patients //////////
+
+    /// List patients
+    pub fn patients(&self) -> Result<Vec<String>> {
+        self.list("patients")
+    }
+
     /// List all patients in an expanded format
     pub fn patients_expanded(&self) -> Result<Vec<Patient>> {
         let resp = self.get("patients?expand")?;
         let json: Vec<Patient> = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// List all studies in an expanded format
-    pub fn studies_expanded(&self) -> Result<Vec<Study>> {
-        let resp = self.get("studies?expand")?;
-        let json: Vec<Study> = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// List all series in an expanded format
-    pub fn series_expanded(&self) -> Result<Vec<Series>> {
-        let resp = self.get("series?expand")?;
-        let json: Vec<Series> = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// List all instances in an expanded format
-    pub fn instances_expanded(&self) -> Result<Vec<Instance>> {
-        let resp = self.get("instances?expand")?;
-        let json: Vec<Instance> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -273,6 +368,63 @@ impl Client {
         Ok(json)
     }
 
+    /// Download a patient as a collection of DICOM files
+    ///
+    /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Streamed data is a ZIP archive
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/patient.zip").unwrap();
+    /// client().patient_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
+    /// ```
+    pub fn patient_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
+        let path = format!("patients/{}/archive", id);
+        self.get_stream(&path, writer)
+    }
+
+    /// Anonymize a patient
+    pub fn anonymize_patient(
+        &self,
+        id: &str,
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        self.anonymize("patients", id, anonymization)
+    }
+
+    /// Modify a patient
+    pub fn modify_patient(
+        &self,
+        id: &str,
+        modification: Modification,
+    ) -> Result<ModificationResult> {
+        self.modify("patients", id, modification)
+    }
+
+    /// Delete a patient
+    pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestor> {
+        let resp = self.delete(&format!("patients/{}", id))?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    ////////// Studies //////////
+
+    /// List studies
+    pub fn studies(&self) -> Result<Vec<String>> {
+        self.list("studies")
+    }
+
+    /// List all studies in an expanded format
+    pub fn studies_expanded(&self) -> Result<Vec<Study>> {
+        let resp = self.get("studies?expand")?;
+        let json: Vec<Study> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
     /// Get a study by its ID
     pub fn study(&self, id: &str) -> Result<Study> {
         let resp = self.get(&format!("studies/{}", id))?;
@@ -280,10 +432,125 @@ impl Client {
         Ok(json)
     }
 
+    /// Download a study as a collection of DICOM files
+    ///
+    /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Streamed data is a ZIP archive
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/study.zip").unwrap();
+    /// client().study_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
+    /// ```
+    pub fn study_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
+        let path = format!("studies/{}/archive", id);
+        self.get_stream(&path, writer)?;
+        Ok(())
+    }
+
+    /// Anonymize a study
+    pub fn anonymize_study(
+        &self,
+        id: &str,
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        self.anonymize("studies", id, anonymization)
+    }
+
+    /// Modify a study
+    pub fn modify_study(
+        &self,
+        id: &str,
+        modification: Modification,
+    ) -> Result<ModificationResult> {
+        self.modify("studies", id, modification)
+    }
+
+    /// Delete a study
+    pub fn delete_study(&self, id: &str) -> Result<RemainingAncestor> {
+        let resp = self.delete(&format!("studies/{}", id))?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    ////////// Series //////////
+
+    /// List series
+    pub fn series_list(&self) -> Result<Vec<String>> {
+        self.list("series")
+    }
+
+    /// List all series in an expanded format
+    pub fn series_expanded(&self) -> Result<Vec<Series>> {
+        let resp = self.get("series?expand")?;
+        let json: Vec<Series> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
     /// Get a series by its ID
     pub fn series(&self, id: &str) -> Result<Series> {
         let resp = self.get(&format!("series/{}", id))?;
         let json: Series = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// Download a series as a collection of DICOM files
+    ///
+    /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
+    /// object, writing the data into it in a streaming fashion.
+    ///
+    /// Streamed data is a ZIP archive
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// let mut file = fs::File::create("/tmp/series.zip").unwrap();
+    /// client().series_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
+    /// ```
+    pub fn series_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
+        let path = format!("series/{}/archive", id);
+        self.get_stream(&path, writer)
+    }
+
+    /// Anonymize a series
+    pub fn anonymize_series(
+        &self,
+        id: &str,
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        self.anonymize("series", id, anonymization)
+    }
+
+    /// Modify a series
+    pub fn modify_series(
+        &self,
+        id: &str,
+        modification: Modification,
+    ) -> Result<ModificationResult> {
+        self.modify("series", id, modification)
+    }
+
+    /// Delete a series
+    pub fn delete_series(&self, id: &str) -> Result<RemainingAncestor> {
+        let resp = self.delete(&format!("series/{}", id))?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    ////////// Instances //////////
+
+    /// List instances
+    pub fn instances(&self) -> Result<Vec<String>> {
+        self.list("instances")
+    }
+
+    /// List all instances in an expanded format
+    pub fn instances_expanded(&self) -> Result<Vec<Instance>> {
+        let resp = self.get("instances?expand")?;
+        let json: Vec<Instance> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -333,61 +600,6 @@ impl Client {
         Ok(String::from_utf8_lossy(&resp).trim().to_string())
     }
 
-    /// Download a patient as a collection of DICOM files
-    ///
-    /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
-    /// object, writing the data into it in a streaming fashion.
-    ///
-    /// Streamed data is a ZIP archive
-    ///
-    /// Example:
-    ///
-    /// ```
-    /// let mut file = fs::File::create("/tmp/patient.zip").unwrap();
-    /// client().patient_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
-    /// ```
-    pub fn patient_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
-        let path = format!("patients/{}/archive", id);
-        self.get_stream(&path, writer)
-    }
-
-    /// Download a study as a collection of DICOM files
-    ///
-    /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
-    /// object, writing the data into it in a streaming fashion.
-    ///
-    /// Streamed data is a ZIP archive
-    ///
-    /// Example:
-    ///
-    /// ```
-    /// let mut file = fs::File::create("/tmp/study.zip").unwrap();
-    /// client().study_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
-    /// ```
-    pub fn study_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
-        let path = format!("studies/{}/archive", id);
-        self.get_stream(&path, writer)?;
-        Ok(())
-    }
-
-    /// Download a series as a collection of DICOM files
-    ///
-    /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
-    /// object, writing the data into it in a streaming fashion.
-    ///
-    /// Streamed data is a ZIP archive
-    ///
-    /// Example:
-    ///
-    /// ```
-    /// let mut file = fs::File::create("/tmp/series.zip").unwrap();
-    /// client().series_dicom("3693b9d5-8b0e2a80-2cf45dda-d19e7c22-8749103c", &mut file).unwrap();
-    /// ```
-    pub fn series_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
-        let path = format!("series/{}/archive", id);
-        self.get_stream(&path, writer)
-    }
-
     /// Download an instance as a DICOM file
     ///
     /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
@@ -402,126 +614,6 @@ impl Client {
     pub fn instance_dicom<W: Write>(&self, id: &str, writer: W) -> Result<()> {
         let path = format!("instances/{}/file", id);
         self.get_stream(&path, writer)
-    }
-
-    /// Delete a patient
-    pub fn delete_patient(&self, id: &str) -> Result<RemainingAncestor> {
-        let resp = self.delete(&format!("patients/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// Delete a study
-    pub fn delete_study(&self, id: &str) -> Result<RemainingAncestor> {
-        let resp = self.delete(&format!("studies/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// Delete a series
-    pub fn delete_series(&self, id: &str) -> Result<RemainingAncestor> {
-        let resp = self.delete(&format!("series/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// Delete an instance
-    pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestor> {
-        let resp = self.delete(&format!("instances/{}", id))?;
-        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// Send a C-ECHO request to a remote modality
-    ///
-    /// If no error is returned, the request was successful
-    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
-        let mut data = HashMap::new();
-        if let Some(to) = timeout {
-            data.insert("Timeout", to);
-        }
-        self.post(
-            &format!("modalities/{}/echo", modality),
-            serde_json::json!(data),
-        )
-        .map(|_| ())
-    }
-
-    /// Send a C-MOVE request to a remote modality
-    ///
-    /// If no error is returned, the request was successful
-    pub fn modality_move(&self, modality: &str, move_request: Move) -> Result<()> {
-        self.post(
-            &format!("modalities/{}/move", modality),
-            serde_json::to_value(move_request)?,
-        )
-        .map(|_| ())
-    }
-
-    fn anonymize(
-        &self,
-        entity: &str,
-        id: &str,
-        anonymization: Option<Anonymization>,
-    ) -> Result<ModificationResult> {
-        let data = match anonymization {
-            Some(a) => a,
-            // TODO: Just pass an empty object?
-            None => Anonymization {
-                replace: None,
-                keep: None,
-                keep_private_tags: None,
-                dicom_version: None,
-                force: None,
-            },
-        };
-        let resp = self.post(
-            &format!("{}/{}/anonymize", entity, id),
-            serde_json::to_value(data)?,
-        )?;
-        let json: ModificationResult = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    fn modify(
-        &self,
-        entity: &str,
-        id: &str,
-        modification: Modification,
-    ) -> Result<ModificationResult> {
-        let resp = self.post(
-            &format!("{}/{}/modify", entity, id),
-            serde_json::to_value(modification)?,
-        )?;
-        let json: ModificationResult = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    /// Anonymize a patient
-    pub fn anonymize_patient(
-        &self,
-        id: &str,
-        anonymization: Option<Anonymization>,
-    ) -> Result<ModificationResult> {
-        self.anonymize("patients", id, anonymization)
-    }
-
-    /// Anonymize a study
-    pub fn anonymize_study(
-        &self,
-        id: &str,
-        anonymization: Option<Anonymization>,
-    ) -> Result<ModificationResult> {
-        self.anonymize("studies", id, anonymization)
-    }
-
-    /// Anonymize a series
-    pub fn anonymize_series(
-        &self,
-        id: &str,
-        anonymization: Option<Anonymization>,
-    ) -> Result<ModificationResult> {
-        self.anonymize("series", id, anonymization)
     }
 
     /// Anonymize an instance
@@ -560,33 +652,6 @@ impl Client {
         Ok(())
     }
 
-    /// Modify a patient
-    pub fn modify_patient(
-        &self,
-        id: &str,
-        modification: Modification,
-    ) -> Result<ModificationResult> {
-        self.modify("patients", id, modification)
-    }
-
-    /// Modify a study
-    pub fn modify_study(
-        &self,
-        id: &str,
-        modification: Modification,
-    ) -> Result<ModificationResult> {
-        self.modify("studies", id, modification)
-    }
-
-    /// Modify a series
-    pub fn modify_series(
-        &self,
-        id: &str,
-        modification: Modification,
-    ) -> Result<ModificationResult> {
-        self.modify("series", id, modification)
-    }
-
     /// Modify an instance
     ///
     /// Accepts a mutable reference to an object, that implements a [`Write`] trait, and mutates the
@@ -617,6 +682,22 @@ impl Client {
         Ok(())
     }
 
+    /// Delete an instance
+    pub fn delete_instance(&self, id: &str) -> Result<RemainingAncestor> {
+        let resp = self.delete(&format!("instances/{}", id))?;
+        let json: RemainingAncestor = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    ////////// Orther //////////
+
+    /// System information
+    pub fn system(&self) -> Result<System> {
+        let resp = self.get("system")?;
+        let json: System = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
     /// Upload a DICOM file to Orthanc
     ///
     /// ```
@@ -627,75 +708,6 @@ impl Client {
     pub fn upload(&self, data: &[u8]) -> Result<UploadResult> {
         let resp = self.post_bytes("instances", data)?;
         let json: UploadResult = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    // TODO: The following two methods are exactly the same
-    /// Create a modality
-    pub fn create_modality(&self, name: &str, modality: Modality) -> Result<()> {
-        self.put(
-            &format!("modalities/{}", name),
-            serde_json::to_value(modality)?,
-        )
-        .map(|_| ())
-    }
-
-    /// Modify a modality
-    pub fn modify_modality(&self, name: &str, modality: Modality) -> Result<()> {
-        self.put(
-            &format!("modalities/{}", name),
-            serde_json::to_value(modality)?,
-        )
-        .map(|_| ())
-    }
-
-    /// Delete a modality
-    pub fn delete_modality(&self, name: &str) -> Result<()> {
-        self.delete(&format!("modalities/{}", name)).map(|_| ())
-    }
-
-    /// Send a C-STORE DICOM request to a remote modality
-    ///
-    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
-    /// [`Series`] or [`Instance`]
-    pub fn store(
-        &self,
-        modality: &str,
-        ids: &[&str],
-    ) -> Result<StoreResult> {
-        let resp = self.post(
-            &format!("modalities/{}/store", modality),
-            serde_json::json!(ids),
-        )?;
-        let json: StoreResult = serde_json::from_slice(&resp)?;
-        Ok(json)
-    }
-
-    // TODO: The following two methods are exactly the same
-    /// Create a peer
-    pub fn create_peer(&self, name: &str, peer: Peer) -> Result<()> {
-        self.put(&format!("peers/{}", name), serde_json::to_value(peer)?)
-            .map(|_| ())
-    }
-
-    /// Modify a peer
-    pub fn modify_peer(&self, name: &str, peer: Peer) -> Result<()> {
-        self.put(&format!("peers/{}", name), serde_json::to_value(peer)?)
-            .map(|_| ())
-    }
-
-    /// Delete a peer
-    pub fn delete_peer(&self, name: &str) -> Result<()> {
-        self.delete(&format!("peers/{}", name)).map(|_| ())
-    }
-
-    /// Send entities to a peer
-    ///
-    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
-    /// [`Series`] or [`Instance`]
-    pub fn peer_store(&self, peer: &str, ids: &[&str]) -> Result<PeerStoreResult> {
-        let resp = self.post(&format!("peers/{}/store", peer), serde_json::json!(ids))?;
-        let json: PeerStoreResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
