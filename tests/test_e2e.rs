@@ -1383,8 +1383,8 @@ fn test_modality_store() {
     client().create_modality("dino", modality).unwrap();
 
     assert_eq!(
-        client().modality_store("dino", &[&first_study()]).unwrap(),
-        ModalityStoreResult {
+        client().store("dino", &[&first_study()]).unwrap(),
+        StoreResult {
             description: "REST API".to_string(),
             local_aet: "ORTHANC".to_string(),
             remote_aet: "DINO".to_string(),

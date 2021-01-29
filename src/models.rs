@@ -159,7 +159,7 @@ pub struct UploadResult {
 /// Result of a C-STORE DICOM request (sending entities to a modality)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct ModalityStoreResult {
+pub struct StoreResult {
     pub description: String,
     pub local_aet: String,
     pub remote_aet: String,

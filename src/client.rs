@@ -647,16 +647,16 @@ impl Client {
     ///
     /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
     /// [`Series`] or [`Instance`]
-    pub fn modality_store(
+    pub fn store(
         &self,
         modality: &str,
         ids: &[&str],
-    ) -> Result<ModalityStoreResult> {
+    ) -> Result<StoreResult> {
         let resp = self.post(
             &format!("modalities/{}/store", modality),
             serde_json::json!(ids),
         )?;
-        let json: ModalityStoreResult = serde_json::from_slice(&resp)?;
+        let json: StoreResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
