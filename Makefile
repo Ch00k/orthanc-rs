@@ -1,11 +1,19 @@
 SHELL := /usr/bin/env bash
 
-export ORC_ORTHANC_ADDRESS ?= http://localhost:8028
-export ORC_ORTHANC_PEER_ADDRESS ?= http://localhost:8029
+export ORC_MAIN_PORT ?= 8028
+export ORC_PEER_PORT ?= 8029
+export ORC_MODALITY_ONE_PORT ?= 8021
+export ORC_MODALITY_TWO_PORT ?= 8022
+
+export ORC_MAIN_ADDRESS ?= http://localhost:${ORC_MAIN_PORT}
+export ORC_PEER_ADDRESS ?= http://localhost:${ORC_PEER_PORT}
+export ORC_MODALITY_ONE_ADDRESS ?= http://localhost:${ORC_MODALITY_ONE_PORT}
+export ORC_MODALITY_TWO_ADDRESS ?= http://localhost:${ORC_MODALITY_TWO_PORT}
+
 export ORC_ORTHANC_USERNAME ?= orthanc
 export ORC_ORTHANC_PASSWORD ?= orthanc
 export ORC_DATAFILES_PATH ?= ./tests/data/dicom
-export
+
 export DINO_SCP_HOST ?= 0.0.0.0
 export DINO_SCP_PORT ?= 5252
 export DINO_SCP_AET ?= DINO
