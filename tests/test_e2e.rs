@@ -25,7 +25,10 @@ const STUDY_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.6560.201107281406050700
 const PATIENT_ID: &str = "patient_2";
 
 const UPLOAD_INSTANCE_FILE_PATH: &str = "upload";
+
 const MOVE_INSTANCE_FILE_PATH: &str = "move";
+const MOVE_STUDY_INSTANCE_UID: &str = "99.88.77.66.5.4.3.2.1.0";
+const MOVE_SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.10176.2012103017543590042";
 
 const DEIDENTIFICATION_TAG_PATTERN: &str =
     r"Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile";
@@ -1617,7 +1620,7 @@ fn test_move() {
         level: EntityKind::Study,
         target_aet: Some("MODALITY_TWO".to_string()),
         resources: vec![hashmap! {
-            "StudyInstanceUID".to_string() => "99.88.77.66.5.4.3.2.1.0".to_string(),
+            "StudyInstanceUID".to_string() => MOVE_STUDY_INSTANCE_UID.to_string(),
         }],
         timeout: None,
     };
@@ -1634,9 +1637,7 @@ fn test_move() {
     // Verify that we do not have the instance
     let instances = client_main().instances_expanded().unwrap();
     for instance in instances {
-        if instance.main_dicom_tag("SOPInstanceUID")
-            == Some("1.3.46.670589.11.1.5.0.10176.2012103017543590042")
-        {
+        if instance.main_dicom_tag("SOPInstanceUID") == Some(MOVE_SOP_INSTANCE_UID) {
             panic!("Found an instance that should not be there")
         }
     }
@@ -1646,7 +1647,7 @@ fn test_move() {
         level: EntityKind::Study,
         target_aet: None,
         resources: vec![hashmap! {
-            "StudyInstanceUID".to_string() => "99.88.77.66.5.4.3.2.1.0".to_string(),
+            "StudyInstanceUID".to_string() => MOVE_STUDY_INSTANCE_UID.to_string(),
         }],
         timeout: None,
     };
@@ -1661,9 +1662,7 @@ fn test_move() {
     let instances = client_main().instances_expanded().unwrap();
     let mut exists: bool = false;
     for instance in instances {
-        if instance.main_dicom_tag("SOPInstanceUID")
-            == Some("1.3.46.670589.11.1.5.0.10176.2012103017543590042")
-        {
+        if instance.main_dicom_tag("SOPInstanceUID") == Some(MOVE_SOP_INSTANCE_UID) {
             exists = true
         }
     }
