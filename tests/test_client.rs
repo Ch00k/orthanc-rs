@@ -2833,3 +2833,106 @@ fn test_search_error() {
     );
     assert_eq!(m.times_called(), 1);
 }
+
+#[test]
+fn test_modality_move() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/modalities/foo/move")
+        .expect_json_body(&Move {
+            level: EntityKind::Study,
+            target_aet: Some("MODALITY_TWO".to_string()),
+            resources: vec![hashmap! {
+                "StudyInstanceUID".to_string() => "99.88.77.66.5.4.3.2.1.0".to_string(),
+            }],
+            timeout: None,
+        })
+        .return_status(200)
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let res = cl
+        .modality_move(
+            "foo",
+            Move {
+                level: EntityKind::Study,
+                target_aet: Some("MODALITY_TWO".to_string()),
+                resources: vec![hashmap! {
+                    "StudyInstanceUID".to_string() => "99.88.77.66.5.4.3.2.1.0".to_string(),
+                }],
+                timeout: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(res, ());
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_modality_move_error() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/modalities/foo/move")
+        .expect_json_body(&Move {
+            level: EntityKind::Study,
+            target_aet: Some("MODALITY_TWO".to_string()),
+            resources: vec![hashmap! {
+                "StudyInstanceUID".to_string() => "99.88.77.66.5.4.3.2.1.0".to_string(),
+            }],
+            timeout: None,
+        })
+        .return_status(500)
+        .return_header("Content-Type", "application/json")
+        .return_body(
+            r#"
+                    {
+                       "HttpError" : "Internal Server Error",
+                       "HttpStatus" : 500,
+                       "Message" : "Boom!",
+                       "Method" : "POST",
+                       "OrthancError" : "Boom!",
+                       "OrthancStatus" : 27,
+                       "Uri" : "/modalities/foo/move"
+                    }
+               "#,
+        )
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let res = cl.modality_move(
+        "foo",
+        Move {
+            level: EntityKind::Study,
+            target_aet: Some("MODALITY_TWO".to_string()),
+            resources: vec![hashmap! {
+                "StudyInstanceUID".to_string() => "99.88.77.66.5.4.3.2.1.0".to_string(),
+            }],
+            timeout: None,
+        },
+    );
+
+    assert_eq!(
+        res.unwrap_err(),
+        Error {
+            message: "API error: 500 Internal Server Error".to_string(),
+            details: Some(ApiError {
+                method: "POST".to_string(),
+                uri: "/modalities/foo/move".to_string(),
+                message: "Boom!".to_string(),
+                details: None,
+                http_status: 500,
+                http_error: "Internal Server Error".to_string(),
+                orthanc_status: 27,
+                orthanc_error: "Boom!".to_string(),
+            },),
+        },
+    );
+    assert_eq!(m.times_called(), 1);
+}
