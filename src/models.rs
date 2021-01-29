@@ -145,7 +145,7 @@ pub struct Search {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct Move {
+pub struct ModalityMove {
     pub level: EntityKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_aet: Option<String>,
@@ -170,7 +170,7 @@ pub struct UploadResult {
 /// Result of a C-STORE DICOM request (sending entities to a modality)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-pub struct StoreResult {
+pub struct ModalityStoreResult {
     pub description: String,
     pub local_aet: String,
     pub remote_aet: String,
@@ -178,6 +178,9 @@ pub struct StoreResult {
     pub instances_count: u64,
     pub failed_instances_count: u64,
 }
+
+#[deprecated(note = "Renamed to ModalityStoreResult", since = "0.8.0")]
+pub type StoreResult = ModalityStoreResult;
 
 /// Result of a peer store request (sending entities to a peer)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]

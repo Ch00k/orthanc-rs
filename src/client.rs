@@ -183,6 +183,8 @@ impl Client {
         check_http_error(status, body)
     }
 
+    ////////// Helpers //////////
+
     fn list(&self, entity: &str) -> Result<Vec<String>> {
         let resp = self.get(entity)?;
         let json: Vec<String> = serde_json::from_slice(&resp)?;
@@ -269,7 +271,7 @@ impl Client {
     /// Send a C-ECHO request to a remote modality
     ///
     /// If no error is returned, the request was successful
-    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
+    pub fn modality_echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
         let mut data = HashMap::new();
         if let Some(to) = timeout {
             data.insert("Timeout", to);
@@ -281,23 +283,44 @@ impl Client {
         .map(|_| ())
     }
 
+    /// Send a C-ECHO request to a remote modality
+    ///
+    /// If no error is returned, the request was successful
+    #[deprecated(note = "Renamed to modality_echo", since = "0.8.0")]
+    pub fn echo(&self, modality: &str, timeout: Option<u32>) -> Result<()> {
+        self.modality_echo(modality, timeout)
+    }
+
     /// Send a C-STORE DICOM request to a remote modality
     ///
     /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
     /// [`Series`] or [`Instance`]
-    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<StoreResult> {
+    pub fn modality_store(
+        &self,
+        modality: &str,
+        ids: &[&str],
+    ) -> Result<ModalityStoreResult> {
         let resp = self.post(
             &format!("modalities/{}/store", modality),
             serde_json::json!(ids),
         )?;
-        let json: StoreResult = serde_json::from_slice(&resp)?;
+        let json: ModalityStoreResult = serde_json::from_slice(&resp)?;
         Ok(json)
+    }
+
+    /// Send a C-STORE DICOM request to a remote modality
+    ///
+    /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
+    /// [`Series`] or [`Instance`]
+    #[deprecated(note = "Renamed to modality_store", since = "0.8.0")]
+    pub fn store(&self, modality: &str, ids: &[&str]) -> Result<ModalityStoreResult> {
+        self.modality_store(modality, ids)
     }
 
     /// Send a C-MOVE request to a remote modality
     ///
     /// If no error is returned, the request was successful
-    pub fn modality_move(&self, modality: &str, move_request: Move) -> Result<()> {
+    pub fn modality_move(&self, modality: &str, move_request: ModalityMove) -> Result<()> {
         self.post(
             &format!("modalities/{}/move", modality),
             serde_json::to_value(move_request)?,

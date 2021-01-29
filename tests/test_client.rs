@@ -1291,10 +1291,20 @@ fn test_modality_store() {
         .create_on(&mock_server);
 
     let cl = Client::new(url);
-    let resp = cl.store("them", &["bar", "baz", "qux"]).unwrap();
+    assert_eq!(
+        cl.modality_store("them", &["bar", "baz", "qux"]).unwrap(),
+        ModalityStoreResult {
+            description: "REST API".to_string(),
+            local_aet: "US".to_string(),
+            remote_aet: "THEM".to_string(),
+            parent_resources: vec!["bar".to_string(), "baz".to_string(), "qux".to_string()],
+            instances_count: 42,
+            failed_instances_count: 17
+        }
+    );
 
     assert_eq!(
-        resp,
+        cl.store("them", &["bar", "baz", "qux"]).unwrap(),
         StoreResult {
             description: "REST API".to_string(),
             local_aet: "US".to_string(),
@@ -1304,7 +1314,7 @@ fn test_modality_store() {
             failed_instances_count: 17
         }
     );
-    assert_eq!(m.times_called(), 1);
+    assert_eq!(m.times_called(), 2);
 }
 
 #[test]
@@ -1871,7 +1881,7 @@ fn test_delete_instance() {
 }
 
 #[test]
-fn test_echo() {
+fn test_modality_echo() {
     let mock_server = MockServer::start();
     let url = mock_server.url("");
 
@@ -1883,10 +1893,9 @@ fn test_echo() {
         .create_on(&mock_server);
 
     let cl = Client::new(url);
-    let resp = cl.echo("foo", None).unwrap();
-
-    assert_eq!(resp, ());
-    assert_eq!(m.times_called(), 1);
+    assert_eq!(cl.modality_echo("foo", None).unwrap(), ());
+    assert_eq!(cl.echo("foo", None).unwrap(), ());
+    assert_eq!(m.times_called(), 2);
 }
 
 #[test]
@@ -1903,10 +1912,9 @@ fn test_echo_with_timeout() {
         .create_on(&mock_server);
 
     let cl = Client::new(url);
-    let resp = cl.echo("foo", Some(42)).unwrap();
-
-    assert_eq!(resp, ());
-    assert_eq!(m.times_called(), 1);
+    assert_eq!(cl.modality_echo("foo", Some(42)).unwrap(), ());
+    assert_eq!(cl.echo("foo", Some(42)).unwrap(), ());
+    assert_eq!(m.times_called(), 2);
 }
 
 #[test]
@@ -1921,16 +1929,21 @@ fn test_echo_failed() {
         .create_on(&mock_server);
 
     let cl = Client::new(url);
-    let resp = cl.echo("foo", None);
-
     assert_eq!(
-        resp.unwrap_err(),
+        cl.modality_echo("foo", None).unwrap_err(),
         Error {
             message: "API error: 500 Internal Server Error".to_string(),
             details: None
         }
     );
-    assert_eq!(m.times_called(), 1);
+    assert_eq!(
+        cl.echo("foo", None).unwrap_err(),
+        Error {
+            message: "API error: 500 Internal Server Error".to_string(),
+            details: None
+        }
+    );
+    assert_eq!(m.times_called(), 2);
 }
 
 #[test]
@@ -2842,7 +2855,7 @@ fn test_modality_move() {
     let m = Mock::new()
         .expect_method(Method::POST)
         .expect_path("/modalities/foo/move")
-        .expect_json_body(&Move {
+        .expect_json_body(&ModalityMove {
             level: EntityKind::Study,
             target_aet: Some("MODALITY_TWO".to_string()),
             resources: vec![hashmap! {
@@ -2857,7 +2870,7 @@ fn test_modality_move() {
     let res = cl
         .modality_move(
             "foo",
-            Move {
+            ModalityMove {
                 level: EntityKind::Study,
                 target_aet: Some("MODALITY_TWO".to_string()),
                 resources: vec![hashmap! {
@@ -2880,7 +2893,7 @@ fn test_modality_move_error() {
     let m = Mock::new()
         .expect_method(Method::POST)
         .expect_path("/modalities/foo/move")
-        .expect_json_body(&Move {
+        .expect_json_body(&ModalityMove {
             level: EntityKind::Study,
             target_aet: Some("MODALITY_TWO".to_string()),
             resources: vec![hashmap! {
@@ -2908,7 +2921,7 @@ fn test_modality_move_error() {
     let cl = Client::new(url);
     let res = cl.modality_move(
         "foo",
-        Move {
+        ModalityMove {
             level: EntityKind::Study,
             target_aet: Some("MODALITY_TWO".to_string()),
             resources: vec![hashmap! {

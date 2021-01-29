@@ -1391,6 +1391,7 @@ fn test_modality_echo() {
     };
     client_main().create_modality("dino", modality).unwrap();
 
+    assert_eq!(client_main().modality_echo("dino", None).unwrap(), ());
     assert_eq!(client_main().echo("dino", None).unwrap(), ());
 }
 
@@ -1415,6 +1416,19 @@ fn test_modality_store() {
     };
     client_main().create_modality("dino", modality).unwrap();
 
+    assert_eq!(
+        client_main()
+            .modality_store("dino", &[&first_study()])
+            .unwrap(),
+        ModalityStoreResult {
+            description: "REST API".to_string(),
+            local_aet: "ORTHANC".to_string(),
+            remote_aet: "DINO".to_string(),
+            parent_resources: vec!(first_study()),
+            instances_count: 2,
+            failed_instances_count: 0,
+        }
+    );
     assert_eq!(
         client_main().store("dino", &[&first_study()]).unwrap(),
         StoreResult {
@@ -1616,7 +1630,7 @@ fn test_move() {
     assert!(client_modality_two().instances().unwrap().is_empty());
 
     // Move from modality_one to modality_two
-    let move_request = Move {
+    let move_request = ModalityMove {
         level: EntityKind::Study,
         target_aet: Some("MODALITY_TWO".to_string()),
         resources: vec![hashmap! {
@@ -1643,7 +1657,7 @@ fn test_move() {
     }
 
     // Move from modality_one to us
-    let move_request = Move {
+    let move_request = ModalityMove {
         level: EntityKind::Study,
         target_aet: None,
         resources: vec![hashmap! {
