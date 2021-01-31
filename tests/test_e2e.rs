@@ -1186,11 +1186,42 @@ fn test_modalities() {
     );
 
     // List expanded
+    let list_expanded = client_main().modalities_expanded().unwrap();
+    assert_eq!(list_expanded.len(), 2);
     assert_eq!(
-        json!(client_main().modalities_expanded().unwrap()),
-        expected_response("modalities?expand")
+        list_expanded["bazqux"],
+        Modality {
+            aet: "foobar".to_string(),
+            host: "1.2.3.4".to_string(),
+            port: 4217,
+            manufacturer: Some("Generic".to_string()),
+            allow_c_echo: Some(true),
+            allow_c_find: Some(true),
+            allow_c_get: Some(true),
+            allow_c_move: Some(true),
+            allow_c_store: Some(true),
+            allow_n_action: Some(true),
+            allow_n_event_report: Some(true),
+            allow_transcoding,
+        }
     );
-    println!("{:#?}", client_main().modalities_expanded().unwrap());
+    assert_eq!(
+        list_expanded["garble"],
+        Modality {
+            aet: "garble".to_string(),
+            host: "9.8.7.6".to_string(),
+            port: 1742,
+            manufacturer: Some("GE".to_string()),
+            allow_c_echo: Some(false),
+            allow_c_find: Some(false),
+            allow_c_get: Some(false),
+            allow_c_move: Some(false),
+            allow_c_store: Some(false),
+            allow_n_action: Some(false),
+            allow_n_event_report: Some(false),
+            allow_transcoding,
+        }
+    );
 
     // Modify
     let modality = Modality {
