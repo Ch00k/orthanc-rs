@@ -12,7 +12,7 @@ DICOM server.
 
 ## Compatibility
 
-Supported Orthanc versions are 1.6.x, 1.7.x, 1.8.x.
+Supported Orthanc versions are 1.6.x, 1.7.x, 1.8.x, 1.9.x.
 
 ## Installation
 
