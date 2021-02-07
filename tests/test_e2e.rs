@@ -1715,3 +1715,62 @@ fn test_move() {
         panic!("Instance not moved");
     };
 }
+
+#[test]
+fn test_modaliy_find() {
+    // Create modality_one
+    let modality_one = Modality {
+        aet: "MODALITY_ONE".to_string(),
+        host: "modality_one".to_string(), // docker-compose
+        port: 4242,
+        manufacturer: None,
+        allow_c_echo: None,
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: None,
+        allow_c_store: None,
+        allow_n_action: None,
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    client_main()
+        .create_modality("modality_one", modality_one)
+        .unwrap();
+
+    // Create ourselves in modality_one
+    let orthanc_main = Modality {
+        aet: "ORTHANC".to_string(),
+        host: "orthanc_main".to_string(), // docker-compose
+        port: 4242,
+        manufacturer: None,
+        allow_c_echo: None,
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: None,
+        allow_c_store: None,
+        allow_n_action: None,
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    client_modality_one()
+        .create_modality("orthanc_main", orthanc_main)
+        .unwrap();
+
+    // Upload an instance to modality_one
+    let data = fs::read(format!(
+        "{}/{}",
+        env::var("ORC_DATAFILES_PATH").unwrap_or("./data/dicom".to_string()),
+        MOVE_INSTANCE_FILE_PATH
+    ))
+    .unwrap();
+    client_modality_one().upload(&data).unwrap();
+
+    client_main()
+        .modality_find(
+            "modality_one",
+            EntityKind::Instance,
+            hashmap! {"SOPInstanceUID".to_string() => MOVE_SOP_INSTANCE_UID.to_string()},
+            None,
+        )
+        .unwrap();
+}
