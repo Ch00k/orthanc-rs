@@ -2949,3 +2949,114 @@ fn test_modality_move_error() {
     );
     assert_eq!(m.times_called(), 1);
 }
+
+#[test]
+fn test_modality_find() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/modalities/them/query")
+        .expect_json_body(&ModalityFind {
+            level: EntityKind::Study,
+            query: hashmap! {
+                "StudyInstanceUID".to_string() => "1.2.3.4.5.6.999".to_string()
+            },
+            normalize: None,
+        })
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(
+            r#"
+                {
+                    "ID": "1c315256-3eef-4ef6-aa8a-03947cc53513",
+                    "Path": "/queries/1c315256-3eef-4ef6-aa8a-03947cc53513"
+
+                }
+            "#,
+        )
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    assert_eq!(
+        cl.modality_find(
+            "them",
+            EntityKind::Study,
+            hashmap! {
+                "StudyInstanceUID".to_string() => "1.2.3.4.5.6.999".to_string()
+            },
+            None
+        )
+        .unwrap(),
+        ModalityFindResult {
+            id: "1c315256-3eef-4ef6-aa8a-03947cc53513".to_string(),
+            path: "/queries/1c315256-3eef-4ef6-aa8a-03947cc53513".to_string()
+        }
+    );
+
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_modality_find_error() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/modalities/them/query")
+        .expect_json_body(&ModalityFind {
+            level: EntityKind::Study,
+            query: hashmap! {
+                "StudyInstanceUID".to_string() => "1.2.3.4.5.6.999".to_string()
+            },
+            normalize: None,
+        })
+        .return_status(500)
+        .return_header("Content-Type", "application/json")
+        .return_body(
+            r#"
+                {
+                   "Details" : "DicomAssociation - C-FIND to AET \"ORTHANC\": Peer aborted Association (or never connected)",
+                   "HttpError" : "Internal Server Error",
+                   "HttpStatus" : 500,
+                   "Message" : "Error in the network protocol",
+                   "Method" : "POST",
+                   "OrthancError" : "Error in the network protocol",
+                   "OrthancStatus" : 9,
+                   "Uri" : "/modalities/orthanc_main/query"
+                }
+            "#,
+        )
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    assert_eq!(
+        cl.modality_find(
+            "them",
+            EntityKind::Study,
+            hashmap! {
+                "StudyInstanceUID".to_string() => "1.2.3.4.5.6.999".to_string()
+            },
+            None
+        )
+        .unwrap_err(),
+        Error{
+            message: "DicomAssociation - C-FIND to AET \"ORTHANC\": Peer aborted Association (or never connected)".to_string(),
+            details: Some(ApiError {
+                method: "POST".to_string(),
+                uri: "/modalities/them/query".to_string(),
+                message: "Error in the network protocol".to_string(),
+                details: None,
+                http_status: 500,
+                http_error: "Internal Server Error".to_string(),
+                orthanc_status: 9,
+                orthanc_error: "Error in the network protocol".to_string(),
+
+            })
+        }
+    );
+
+    assert_eq!(m.times_called(), 1);
+}

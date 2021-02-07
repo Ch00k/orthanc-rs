@@ -135,6 +135,7 @@ pub struct RemainingAncestor {
     pub remaining_ancestor: Option<Ancestor>,
 }
 
+/// Request body of an Orthanc search request
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Search {
@@ -143,6 +144,7 @@ pub struct Search {
     pub expand: Option<bool>,
 }
 
+/// Modality C-MOVE request body
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ModalityMove {
@@ -152,6 +154,16 @@ pub struct ModalityMove {
     pub resources: Vec<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout: Option<i32>,
+}
+
+/// Modality C-FIND request body
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ModalityFind {
+    pub level: EntityKind,
+    pub query: HashMap<String, String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub normalize: Option<bool>,
 }
 
 /// Result of a DICOM upload request
@@ -181,6 +193,15 @@ pub struct ModalityStoreResult {
 
 #[deprecated(note = "Renamed to ModalityStoreResult", since = "0.8.0")]
 pub type StoreResult = ModalityStoreResult;
+
+/// Result of a C-FIND DICOM request (searching for entities in a modality)
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ModalityFindResult {
+    #[serde(rename = "ID")]
+    pub id: String,
+    pub path: String,
+}
 
 /// Result of a peer store request (sending entities to a peer)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]

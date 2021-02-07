@@ -328,6 +328,29 @@ impl Client {
         .map(|_| ())
     }
 
+    /// Send a C-FIND request to a remote modality
+    ///
+    /// If no error is returned, the request was successful
+    pub fn modality_find(
+        &self,
+        modality: &str,
+        level: EntityKind,
+        query: HashMap<String, String>,
+        normalize: Option<bool>,
+    ) -> Result<ModalityFindResult> {
+        let body = ModalityFind {
+            level,
+            query,
+            normalize,
+        };
+        let resp = self.post(
+            &format!("modalities/{}/query", modality),
+            serde_json::to_value(body)?,
+        )?;
+        let json: ModalityFindResult = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
     ////////// Peers //////////
 
     /// List peers
