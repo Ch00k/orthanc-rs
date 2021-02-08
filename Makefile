@@ -37,7 +37,7 @@ unit_test:
 	cargo test --lib -- --show-output ${TEST}
 
 integration_test:
-	cargo test --test client -- --test-threads=1 --show-output ${TEST}
+	cargo test --test client -- --show-output ${TEST}
 
 e2e_test: reset_orthanc
 	cargo test --test e2e -- --test-threads=1 --show-output ${TEST}
@@ -46,7 +46,7 @@ unit_test_coverage: install_tarpaulin_HEAD
 	cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
 integration_test_coverage: install_tarpaulin_HEAD
-	cargo tarpaulin --test client --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
+	cargo tarpaulin --test client --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
 e2e_test_coverage: install_tarpaulin_HEAD reset_orthanc
 	cargo tarpaulin --test e2e --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
