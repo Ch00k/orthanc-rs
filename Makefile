@@ -42,17 +42,20 @@ integration_test:
 e2e_test: reset_orthanc
 	cargo test --test e2e -- --test-threads=1 --show-output ${TEST}
 
-unit_test_coverage: install_tarpaulin
+unit_test_coverage: install_tarpaulin_HEAD
 	cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
-integration_test_coverage: install_tarpaulin
+integration_test_coverage: install_tarpaulin_HEAD
 	cargo tarpaulin --test client --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
 
-e2e_test_coverage: install_tarpaulin reset_orthanc
+e2e_test_coverage: install_tarpaulin_HEAD reset_orthanc
 	cargo tarpaulin --test e2e --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
 
 install_tarpaulin:
 	cargo install --version 0.16.0 cargo-tarpaulin
+
+install_tarpaulin_HEAD:
+	cargo install --git https://github.com/xd009642/tarpaulin.git --branch develop cargo-tarpaulin
 
 cleanup_orthanc:
 	./scripts/cleanup_orthanc.sh
