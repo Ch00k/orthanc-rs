@@ -1765,7 +1765,7 @@ fn test_modaliy_find() {
     .unwrap();
     client_modality_one().upload(&data).unwrap();
 
-    client_main()
+    let resp = client_main()
         .modality_find(
             "modality_one",
             EntityKind::Instance,
@@ -1773,4 +1773,10 @@ fn test_modaliy_find() {
             None,
         )
         .unwrap();
+    let query_id = resp.id;
+
+    // Get the list of queries
+    let queries = client_main().queries().unwrap();
+
+    assert!(queries.contains(&query_id));
 }

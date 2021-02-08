@@ -735,6 +735,13 @@ impl Client {
         Ok(json)
     }
 
+    ////////// Queries //////////
+
+    /// List queries
+    pub fn queries(&self) -> Result<Vec<String>> {
+        self.list("queries")
+    }
+
     ////////// Orther //////////
 
     /// System information
