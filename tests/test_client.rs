@@ -3025,7 +3025,7 @@ fn test_modality_find_error() {
                    "Method" : "POST",
                    "OrthancError" : "Error in the network protocol",
                    "OrthancStatus" : 9,
-                   "Uri" : "/modalities/orthanc_main/query"
+                   "Uri" : "/modalities/them/query"
                 }
             "#,
         )
@@ -3043,7 +3043,7 @@ fn test_modality_find_error() {
         )
         .unwrap_err(),
         Error{
-            message: "DicomAssociation - C-FIND to AET \"ORTHANC\": Peer aborted Association (or never connected)".to_string(),
+            message: "API error: 500 Internal Server Error".to_string(),
             details: Some(ApiError {
                 method: "POST".to_string(),
                 uri: "/modalities/them/query".to_string(),
