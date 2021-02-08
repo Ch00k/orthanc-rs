@@ -46,7 +46,7 @@ unit_test_coverage: install_tarpaulin
 	cargo tarpaulin --lib --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml
 
 integration_test_coverage: install_tarpaulin
-	cargo tarpaulin --test integration --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
+	cargo tarpaulin --test client --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
 
 e2e_test_coverage: install_tarpaulin reset_orthanc
 	cargo tarpaulin --test e2e --verbose --ignore-tests --all-features --workspace --timeout 120 --out Xml -- --test-threads=1
