@@ -3060,3 +3060,29 @@ fn test_modality_find_error() {
 
     assert_eq!(m.times_called(), 1);
 }
+
+#[test]
+fn test_list_queries() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/queries")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(r#"["1c315256-3eef-4ef6-aa8a-03947cc53513", "1c315256-3eef-4ef6-aa8a-03947cc53514"]"#)
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let queries = cl.queries().unwrap();
+
+    assert_eq!(
+        queries,
+        [
+            "1c315256-3eef-4ef6-aa8a-03947cc53513",
+            "1c315256-3eef-4ef6-aa8a-03947cc53514"
+        ]
+    );
+    assert_eq!(m.times_called(), 1);
+}

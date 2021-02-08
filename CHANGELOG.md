@@ -10,7 +10,8 @@
   [#75](https://github.com/Ch00k/orthanc-rs/pull/75)
 * Implemented C-MOVE (`modalities/foo/move`) [#74](https://github.com/Ch00k/orthanc-rs/pull/74)
 * Added support for Orthanc 1.9.x [#78](https://github.com/Ch00k/orthanc-rs/pull/78)
-* Implemented C-FIND (`/modalities/foo/query`) [#79](https://github.com/Ch00k/orthanc-rs/pull/81)
+* Implemented C-FIND (`/modalities/foo/query`) [#81](https://github.com/Ch00k/orthanc-rs/pull/81),
+  [#83](https://github.com/Ch00k/orthanc-rs/pull/83)
 
 ## [0.7.0](https://github.com/Ch00k/orthanc-rs/compare/0.6.1...0.7.0) 2021-01-06
 
