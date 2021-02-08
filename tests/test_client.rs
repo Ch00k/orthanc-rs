@@ -3048,7 +3048,7 @@ fn test_modality_find_error() {
                 method: "POST".to_string(),
                 uri: "/modalities/them/query".to_string(),
                 message: "Error in the network protocol".to_string(),
-                details: None,
+                details: Some("DicomAssociation - C-FIND to AET \"ORTHANC\": Peer aborted Association (or never connected)".to_string()),
                 http_status: 500,
                 http_error: "Internal Server Error".to_string(),
                 orthanc_status: 9,
