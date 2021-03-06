@@ -1775,8 +1775,12 @@ fn test_modaliy_find() {
         .unwrap();
     let query_id = resp.id;
 
-    // Get the list of queries
-    let queries = client_main().queries().unwrap();
+    // Check that the list of queries contains ours
+    assert!(client_main().queries().unwrap().contains(&query_id));
 
-    assert!(queries.contains(&query_id));
+    // Check query level
+    assert_eq!(
+        client_main().query_level(&query_id).unwrap(),
+        EntityKind::Instance
+    );
 }

@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str;
+use std::{fmt, str, string};
 
 /// Structure of Orthanc's API error
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -47,6 +46,12 @@ impl From<reqwest::Error> for Error {
 
 impl From<serde_json::error::Error> for Error {
     fn from(e: serde_json::error::Error) -> Self {
+        Error::new(&e.to_string(), None)
+    }
+}
+
+impl From<string::FromUtf8Error> for Error {
+    fn from(e: string::FromUtf8Error) -> Self {
         Error::new(&e.to_string(), None)
     }
 }

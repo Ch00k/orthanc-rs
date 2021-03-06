@@ -3086,3 +3086,45 @@ fn test_list_queries() {
     );
     assert_eq!(m.times_called(), 1);
 }
+
+#[test]
+fn test_get_query_level() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/queries/foo/level")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body("Instance")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    assert_eq!(cl.query_level("foo").unwrap(), EntityKind::Instance);
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_get_query_level_error() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/queries/foo/level")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body("Foobar")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    assert_eq!(
+        cl.query_level("foo").unwrap_err(),
+        Error {
+            message: "Unknown entity kind: Foobar".to_string(),
+            details: None
+        }
+    );
+    assert_eq!(m.times_called(), 1);
+}

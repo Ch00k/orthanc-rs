@@ -7,6 +7,7 @@ use bytes::Bytes;
 use reqwest;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::io::prelude::*;
 use std::time;
 
@@ -740,6 +741,13 @@ impl Client {
     /// List queries
     pub fn queries(&self) -> Result<Vec<String>> {
         self.list("queries")
+    }
+
+    /// Get query level
+    pub fn query_level(&self, id: &str) -> Result<EntityKind> {
+        Ok(EntityKind::try_from(
+            self.get(&format!("queries/{}/level", id))?,
+        )?)
     }
 
     ////////// Orther //////////
