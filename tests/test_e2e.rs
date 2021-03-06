@@ -1484,12 +1484,12 @@ fn test_peer_store() {
         certificate_key_file: None,
         certificate_key_password: None,
     };
-    client_main().create_peer("orthanc_peer", peer).unwrap();
+    client_main().create_peer("orthanc-peer", peer).unwrap();
 
     assert_eq!(client_peer().studies().unwrap().len(), 0);
 
     client_main()
-        .peer_store("orthanc_peer", &[&first_study()])
+        .peer_store("orthanc-peer", &[&first_study()])
         .unwrap();
 
     assert_eq!(client_peer().studies().unwrap().len(), 1);
@@ -1568,7 +1568,7 @@ fn test_move() {
         allow_transcoding: None,
     };
     client_main()
-        .create_modality("modality_one", modality_one)
+        .create_modality("modality-one", modality_one)
         .unwrap();
 
     // Create modality_two
@@ -1587,7 +1587,7 @@ fn test_move() {
         allow_transcoding: None,
     };
     client_main()
-        .create_modality("modality_two", modality_two)
+        .create_modality("modality-two", modality_two)
         .unwrap();
 
     // Create modality_one in modality_two and vise versa
@@ -1607,7 +1607,7 @@ fn test_move() {
         allow_transcoding: None,
     };
     client_modality_one()
-        .create_modality("modality_two", modality_two)
+        .create_modality("modality-two", modality_two)
         .unwrap();
 
     let modality_one = Modality {
@@ -1625,7 +1625,7 @@ fn test_move() {
         allow_transcoding: None,
     };
     client_modality_two()
-        .create_modality("modality_one", modality_one)
+        .create_modality("modality-one", modality_one)
         .unwrap();
 
     // Create ourselves in modality_one
@@ -1644,7 +1644,7 @@ fn test_move() {
         allow_transcoding: None,
     };
     client_modality_one()
-        .create_modality("orthanc_main", orthanc_main)
+        .create_modality("orthanc-main", orthanc_main)
         .unwrap();
 
     // Upload an instance to modality_one
@@ -1671,7 +1671,7 @@ fn test_move() {
     };
     assert_eq!(
         client_main()
-            .modality_move("modality_one", move_request)
+            .modality_move("modality-one", move_request)
             .unwrap(),
         ()
     );
@@ -1698,7 +1698,7 @@ fn test_move() {
     };
     assert_eq!(
         client_main()
-            .modality_move("modality_one", move_request)
+            .modality_move("modality-one", move_request)
             .unwrap(),
         ()
     );
@@ -1734,7 +1734,7 @@ fn test_modaliy_find() {
         allow_transcoding: None,
     };
     client_main()
-        .create_modality("modality_one", modality_one)
+        .create_modality("modality-one", modality_one)
         .unwrap();
 
     // Create ourselves in modality_one
@@ -1753,7 +1753,7 @@ fn test_modaliy_find() {
         allow_transcoding: None,
     };
     client_modality_one()
-        .create_modality("orthanc_main", orthanc_main)
+        .create_modality("orthanc-main", orthanc_main)
         .unwrap();
 
     // Upload an instance to modality_one
@@ -1767,7 +1767,7 @@ fn test_modaliy_find() {
 
     let resp = client_main()
         .modality_find(
-            "modality_one",
+            "modality-one",
             EntityKind::Instance,
             hashmap! {"SOPInstanceUID".to_string() => MOVE_SOP_INSTANCE_UID.to_string()},
             None,
