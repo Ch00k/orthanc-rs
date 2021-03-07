@@ -1789,4 +1789,19 @@ fn test_modaliy_find() {
         client_main().query_modality(&query_id).unwrap(),
         "modality-one"
     );
+
+    // Check query query
+    assert_eq!(
+        json!(client_main().query_query(&query_id).unwrap()),
+        expected_response(&format!("queries/{}/query", query_id))
+    );
+
+    // Check query answers
+    assert_eq!(client_main().query_answers(&query_id).unwrap(), vec!["0"]);
+
+    // Check query answer
+    assert_eq!(
+        json!(client_main().query_answer(&query_id, "0").unwrap()),
+        expected_response(&format!("queries/{}/answers/0/content", query_id))
+    );
 }

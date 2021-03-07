@@ -3146,3 +3146,100 @@ fn test_get_query_modality() {
     assert_eq!(cl.query_modality("foo").unwrap(), "bar".to_string());
     assert_eq!(m.times_called(), 1);
 }
+
+#[test]
+fn test_get_query_query() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let body = r#"
+        {
+            "0008,0018": {
+                "Name": "SOPInstanceUID",
+                "Type": "String",
+                "Value": "1.3.46.670589.11.1.5.0.10176.2012103017543590042"
+            }
+        }
+    "#;
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/queries/foo/query")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(body)
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+
+    let resp = cl.query_query("foo").unwrap();
+    let expected_resp: Value = serde_json::from_str(body).unwrap();
+    assert_eq!(resp, expected_resp);
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_list_query_answers() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/queries")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(r#"["0", "1", "42"]"#)
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let queries = cl.queries().unwrap();
+
+    assert_eq!(queries, ["0", "1", "42"]);
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_get_query_answer() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let body = r#"
+        {
+            "0008,0018": {
+                "Name": "SOPInstanceUID",
+                "Type": "String",
+                "Value": "1.3.46.670589.11.1.5.0.10176.2012103017543590042"
+            },
+            "0008,0050": {
+                "Name": "AccessionNumber",
+                "Type": "String",
+                "Value": "REMOVED"
+            },
+            "0008,0052": {
+                "Name": "QueryRetrieveLevel",
+                "Type": "String",
+                "Value": "IMAGE"
+            },
+            "0008,0054": {
+                "Name": "RetrieveAETitle",
+                "Type": "String",
+                "Value": "ORTHANC"
+            }
+        }
+    "#;
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/queries/foo/answers/0/content")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body(body)
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+
+    let resp = cl.query_answer("foo", "0").unwrap();
+    let expected_resp: Value = serde_json::from_str(body).unwrap();
+    assert_eq!(resp, expected_resp);
+    assert_eq!(m.times_called(), 1);
+}

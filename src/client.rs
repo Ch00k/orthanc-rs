@@ -757,6 +757,27 @@ impl Client {
         Ok(str::from_utf8(&resp)?.to_string())
     }
 
+    /// Get query query
+    pub fn query_query(&self, id: &str) -> Result<Value> {
+        let resp = self.get(&format!("queries/{}/query", id))?;
+        let json: Value = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// List query answers
+    pub fn query_answers(&self, id: &str) -> Result<Vec<String>> {
+        let resp = self.get(&format!("queries/{}/answers", id))?;
+        let json: Vec<String> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// Get query answer
+    pub fn query_answer(&self, id: &str, answer_id: &str) -> Result<Value> {
+        let resp = self.get(&format!("queries/{}/answers/{}/content", id, answer_id))?;
+        let json: Value = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
     ////////// Orther //////////
 
     /// System information
