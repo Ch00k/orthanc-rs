@@ -3185,14 +3185,14 @@ fn test_list_query_answers() {
 
     let m = Mock::new()
         .expect_method(Method::GET)
-        .expect_path("/queries")
+        .expect_path("/queries/foo/answers")
         .return_status(200)
         .return_header("Content-Type", "application/json")
         .return_body(r#"["0", "1", "42"]"#)
         .create_on(&mock_server);
 
     let cl = Client::new(url);
-    let queries = cl.queries().unwrap();
+    let queries = cl.query_answers("foo").unwrap();
 
     assert_eq!(queries, ["0", "1", "42"]);
     assert_eq!(m.times_called(), 1);
