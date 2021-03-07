@@ -9,6 +9,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::prelude::*;
+use std::str;
 use std::time;
 
 /// Client type
@@ -748,6 +749,12 @@ impl Client {
         Ok(EntityKind::try_from(
             self.get(&format!("queries/{}/level", id))?,
         )?)
+    }
+
+    /// Get query modality
+    pub fn query_modality(&self, id: &str) -> Result<String> {
+        let resp = self.get(&format!("queries/{}/modality", id))?;
+        Ok(str::from_utf8(&resp)?.to_string())
     }
 
     ////////// Orther //////////

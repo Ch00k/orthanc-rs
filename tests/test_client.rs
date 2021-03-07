@@ -3128,3 +3128,21 @@ fn test_get_query_level_error() {
     );
     assert_eq!(m.times_called(), 1);
 }
+
+#[test]
+fn test_get_query_modality() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::GET)
+        .expect_path("/queries/foo/modality")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .return_body("bar")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    assert_eq!(cl.query_modality("foo").unwrap(), "bar".to_string());
+    assert_eq!(m.times_called(), 1);
+}

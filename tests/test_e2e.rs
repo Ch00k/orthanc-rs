@@ -1783,4 +1783,10 @@ fn test_modaliy_find() {
         client_main().query_level(&query_id).unwrap(),
         EntityKind::Instance
     );
+
+    // Check query modality
+    assert_eq!(
+        client_main().query_modality(&query_id).unwrap(),
+        "modality-one"
+    );
 }
