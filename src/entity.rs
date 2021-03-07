@@ -3,6 +3,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::str;
 
 /// Orthanc entity kinds (types).
 ///
@@ -20,8 +21,9 @@ impl TryFrom<bytes::Bytes> for EntityKind {
     type Error = Error;
 
     fn try_from(value: bytes::Bytes) -> Result<EntityKind, Error> {
-        let s = String::from_utf8(value.to_vec())?;
-        match s.as_str() {
+        let v = value.to_vec();
+        let s = str::from_utf8(&v)?;
+        match s {
             "Patient" => Ok(EntityKind::Patient),
             "Study" => Ok(EntityKind::Study),
             "Series" => Ok(EntityKind::Series),
