@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt, str};
+use std::fmt;
+use std::str;
 
 /// Structure of Orthanc's API error
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
