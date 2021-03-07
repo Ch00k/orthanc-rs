@@ -1,6 +1,9 @@
+use crate::Error;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::str;
 
 /// Orthanc entity kinds (types).
 ///
@@ -12,6 +15,22 @@ pub enum EntityKind {
     Study,
     Series,
     Instance,
+}
+
+impl TryFrom<bytes::Bytes> for EntityKind {
+    type Error = Error;
+
+    fn try_from(value: bytes::Bytes) -> Result<EntityKind, Error> {
+        let v = value.to_vec();
+        let s = str::from_utf8(&v)?;
+        match s {
+            "Patient" => Ok(EntityKind::Patient),
+            "Study" => Ok(EntityKind::Study),
+            "Series" => Ok(EntityKind::Series),
+            "Instance" => Ok(EntityKind::Instance),
+            _ => Err(Error::new(&format!("Unknown entity kind: {}", s), None)),
+        }
+    }
 }
 
 /// A trait, that implements common methods for all entity kinds
@@ -329,6 +348,30 @@ mod tests {
     use super::*;
     use chrono::NaiveDate;
     use maplit::hashmap;
+
+    #[test]
+    fn test_entity_kind_try_from_bytes() {
+        assert_eq!(
+            EntityKind::try_from(bytes::Bytes::from_static(b"Patient")).unwrap(),
+            EntityKind::Patient
+        );
+        assert_eq!(
+            EntityKind::try_from(bytes::Bytes::from_static(b"Study")).unwrap(),
+            EntityKind::Study
+        );
+        assert_eq!(
+            EntityKind::try_from(bytes::Bytes::from_static(b"Series")).unwrap(),
+            EntityKind::Series
+        );
+        assert_eq!(
+            EntityKind::try_from(bytes::Bytes::from_static(b"Instance")).unwrap(),
+            EntityKind::Instance
+        );
+        assert_eq!(
+            EntityKind::try_from(bytes::Bytes::from_static(b"Foobar")).unwrap_err(),
+            Error::new("Unknown entity kind: Foobar", None)
+        );
+    }
 
     #[test]
     fn test_entity_trait_patient() {

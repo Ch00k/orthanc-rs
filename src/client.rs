@@ -7,7 +7,9 @@ use bytes::Bytes;
 use reqwest;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::io::prelude::*;
+use std::str;
 use std::time;
 
 /// Client type
@@ -740,6 +742,40 @@ impl Client {
     /// List queries
     pub fn queries(&self) -> Result<Vec<String>> {
         self.list("queries")
+    }
+
+    /// Get query level
+    pub fn query_level(&self, id: &str) -> Result<EntityKind> {
+        Ok(EntityKind::try_from(
+            self.get(&format!("queries/{}/level", id))?,
+        )?)
+    }
+
+    /// Get query modality
+    pub fn query_modality(&self, id: &str) -> Result<String> {
+        let resp = self.get(&format!("queries/{}/modality", id))?;
+        Ok(str::from_utf8(&resp)?.to_string())
+    }
+
+    /// Get query query
+    pub fn query_query(&self, id: &str) -> Result<Value> {
+        let resp = self.get(&format!("queries/{}/query", id))?;
+        let json: Value = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// List query answers
+    pub fn query_answers(&self, id: &str) -> Result<Vec<String>> {
+        let resp = self.get(&format!("queries/{}/answers", id))?;
+        let json: Vec<String> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// Get query answer
+    pub fn query_answer(&self, id: &str, answer_id: &str) -> Result<Value> {
+        let resp = self.get(&format!("queries/{}/answers/{}/content", id, answer_id))?;
+        let json: Value = serde_json::from_slice(&resp)?;
+        Ok(json)
     }
 
     ////////// Orther //////////
