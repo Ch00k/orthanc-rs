@@ -1723,7 +1723,7 @@ fn _test_move() {
 }
 
 #[test]
-fn test_modaliy_find() {
+fn test_modality_find() {
     // Create modality_one
     let modality_one = Modality {
         aet: "MODALITY_ONE".to_string(),
@@ -1797,7 +1797,7 @@ fn test_modaliy_find() {
         allow_transcoding: None,
     };
     client_modality_one()
-        .create_modality("modality_two", modality_two)
+        .create_modality("modality-two", modality_two)
         .unwrap();
 
     // Upload instances to modality_one
