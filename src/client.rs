@@ -5,6 +5,7 @@ use crate::utils::check_http_error;
 use crate::Result;
 use bytes::Bytes;
 use reqwest;
+use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -119,9 +120,12 @@ impl Client {
         Ok(())
     }
 
-    fn post(&self, path: &str, data: Value) -> Result<Bytes> {
+    fn post(&self, path: &str, data: Option<Value>) -> Result<Bytes> {
         let url = format!("{}/{}", self.server, path);
-        let mut request = self.client.post(&url).json(&data);
+        let mut request = self.client.post(&url);
+        if let Some(d) = data {
+            request = request.json(&d);
+        }
         request = self.add_auth(request);
         let resp = request.send()?;
         let status = resp.status();
@@ -212,7 +216,7 @@ impl Client {
         };
         let resp = self.post(
             &format!("{}/{}/anonymize", entity, id),
-            serde_json::to_value(data)?,
+            Some(serde_json::to_value(data)?),
         )?;
         let json: ModificationResult = serde_json::from_slice(&resp)?;
         Ok(json)
@@ -226,7 +230,7 @@ impl Client {
     ) -> Result<ModificationResult> {
         let resp = self.post(
             &format!("{}/{}/modify", entity, id),
-            serde_json::to_value(modification)?,
+            Some(serde_json::to_value(modification)?),
         )?;
         let json: ModificationResult = serde_json::from_slice(&resp)?;
         Ok(json)
@@ -280,7 +284,7 @@ impl Client {
         }
         self.post(
             &format!("modalities/{}/echo", modality),
-            serde_json::json!(data),
+            Some(serde_json::json!(data)),
         )
         .map(|_| ())
     }
@@ -304,7 +308,7 @@ impl Client {
     ) -> Result<ModalityStoreResult> {
         let resp = self.post(
             &format!("modalities/{}/store", modality),
-            serde_json::json!(ids),
+            Some(serde_json::json!(ids)),
         )?;
         let json: ModalityStoreResult = serde_json::from_slice(&resp)?;
         Ok(json)
@@ -325,7 +329,7 @@ impl Client {
     pub fn modality_move(&self, modality: &str, move_request: ModalityMove) -> Result<()> {
         self.post(
             &format!("modalities/{}/move", modality),
-            serde_json::to_value(move_request)?,
+            Some(serde_json::to_value(move_request)?),
         )
         .map(|_| ())
     }
@@ -347,7 +351,7 @@ impl Client {
         };
         let resp = self.post(
             &format!("modalities/{}/query", modality),
-            serde_json::to_value(body)?,
+            Some(serde_json::to_value(body)?),
         )?;
         let json: ModalityFindResult = serde_json::from_slice(&resp)?;
         Ok(json)
@@ -390,7 +394,10 @@ impl Client {
     /// `ids` is a slice of entity IDs to send. An ID can signify either of [`Patient`], [`Study`],
     /// [`Series`] or [`Instance`]
     pub fn peer_store(&self, peer: &str, ids: &[&str]) -> Result<PeerStoreResult> {
-        let resp = self.post(&format!("peers/{}/store", peer), serde_json::json!(ids))?;
+        let resp = self.post(
+            &format!("peers/{}/store", peer),
+            Some(serde_json::json!(ids)),
+        )?;
         let json: PeerStoreResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
@@ -778,6 +785,37 @@ impl Client {
         Ok(json)
     }
 
+    /// Retrieve a single query answer
+    pub fn retrieve_query_answer(
+        &self,
+        id: &str,
+        answer_id: &str,
+        target_aet: Option<&str>,
+    ) -> Result<()> {
+        self.post(
+            &format!("queries/{}/answers/{}/retrieve", id, answer_id),
+            target_aet.map(|t| {
+                json!(ModalityRetrieve {
+                    target_aet: t.to_string()
+                })
+            }),
+        )
+        .map(|_| ())
+    }
+
+    /// Retrieve all query answers
+    pub fn retrieve_query_answers(&self, id: &str, target_aet: Option<&str>) -> Result<()> {
+        self.post(
+            &format!("queries/{}/retrieve", id),
+            target_aet.map(|t| {
+                json!(ModalityRetrieve {
+                    target_aet: t.to_string()
+                })
+            }),
+        )
+        .map(|_| ())
+    }
+
     ////////// Orther //////////
 
     /// System information
@@ -808,7 +846,7 @@ impl Client {
             query,
             expand: Some(true),
         };
-        let resp = self.post("tools/find", serde_json::to_value(search)?)?;
+        let resp = self.post("tools/find", Some(serde_json::to_value(search)?))?;
         let json: Vec<T> = serde_json::from_slice(&resp)?;
         Ok(json)
     }
@@ -893,7 +931,7 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url).auth("foo", "bar");
-        let resp = cl.post("foo", serde_json::json!("bar")).unwrap();
+        let resp = cl.post("foo", Some(serde_json::json!("bar"))).unwrap();
 
         assert_eq!(resp, "baz");
         assert_eq!(m.times_called(), 1);
@@ -1114,7 +1152,7 @@ mod tests {
             .create_on(&mock_server);
 
         let cl = Client::new(url);
-        let resp = cl.post("foo", serde_json::json!("bar"));
+        let resp = cl.post("foo", Some(serde_json::json!("bar")));
 
         assert_eq!(
             resp.unwrap_err(),
