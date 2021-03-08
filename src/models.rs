@@ -166,6 +166,13 @@ pub struct ModalityFind {
     pub normalize: Option<bool>,
 }
 
+/// Modality retrieve request body
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ModalityRetrieve {
+    pub target_aet: String,
+}
+
 /// Result of a DICOM upload request
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]

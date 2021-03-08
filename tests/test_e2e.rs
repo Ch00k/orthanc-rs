@@ -30,6 +30,12 @@ const MOVE_INSTANCE_FILE_PATH: &str = "move";
 const MOVE_STUDY_INSTANCE_UID: &str = "99.88.77.66.5.4.3.2.1.0";
 const MOVE_SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.10176.2012103017543590042";
 
+const QR_INSTANCE1_FILE_PATH: &str = "qr1";
+const QR_INSTANCE2_FILE_PATH: &str = "qr2";
+const QR_STUDY_INSTANCE_UID: &str = "1.2.3.4.5678.909";
+const QR_SOP_INSTANCE_UID_1: &str = "1.2.3.4.5.6789.1742";
+const QR_SOP_INSTANCE_UID_2: &str = "1.2.3.4.5.6789.1743";
+
 const DEIDENTIFICATION_TAG_PATTERN: &str =
     r"Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile";
 
@@ -1105,7 +1111,7 @@ fn test_get_dicom_tag_value_instance() {
 }
 
 #[test]
-fn test_modalities() {
+fn _test_modalities() {
     // Get system info
     let sysinfo = client_main().system().unwrap();
     let mut allow_transcoding = None;
@@ -1551,7 +1557,7 @@ fn _test_search_instances_in_patient_level() {
 }
 
 #[test]
-fn test_move() {
+fn _test_move() {
     // Create modality_one
     let modality_one = Modality {
         aet: "MODALITY_ONE".to_string(),
@@ -1717,7 +1723,10 @@ fn test_move() {
 }
 
 #[test]
-fn test_modaliy_find() {
+fn test_modality_find() {
+    // Get system info
+    let sysinfo = client_main().system().unwrap();
+
     // Create modality_one
     let modality_one = Modality {
         aet: "MODALITY_ONE".to_string(),
@@ -1735,6 +1744,25 @@ fn test_modaliy_find() {
     };
     client_main()
         .create_modality("modality-one", modality_one)
+        .unwrap();
+
+    // Create modality_two
+    let modality_two = Modality {
+        aet: "MODALITY_TWO".to_string(),
+        host: "modality_two".to_string(), // docker-compose
+        port: 4242,
+        manufacturer: None,
+        allow_c_echo: None,
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: None,
+        allow_c_store: None,
+        allow_n_action: None,
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    client_main()
+        .create_modality("modality-two", modality_two)
         .unwrap();
 
     // Create ourselves in modality_one
@@ -1756,20 +1784,42 @@ fn test_modaliy_find() {
         .create_modality("orthanc-main", orthanc_main)
         .unwrap();
 
-    // Upload an instance to modality_one
-    let data = fs::read(format!(
-        "{}/{}",
-        env::var("ORC_DATAFILES_PATH").unwrap_or("./data/dicom".to_string()),
-        MOVE_INSTANCE_FILE_PATH
-    ))
-    .unwrap();
-    client_modality_one().upload(&data).unwrap();
+    // Create modality_two in modality_one
+    let modality_two = Modality {
+        aet: "MODALITY_TWO".to_string(),
+        host: "modality_two".to_string(), // docker-compose
+        port: 4242,
+        manufacturer: None,
+        allow_c_echo: None,
+        allow_c_find: None,
+        allow_c_get: None,
+        allow_c_move: None,
+        allow_c_store: None,
+        allow_n_action: None,
+        allow_n_event_report: None,
+        allow_transcoding: None,
+    };
+    client_modality_one()
+        .create_modality("modality-two", modality_two)
+        .unwrap();
 
+    // Upload instances to modality_one
+    for p in vec![QR_INSTANCE1_FILE_PATH, QR_INSTANCE2_FILE_PATH] {
+        let data = fs::read(format!(
+            "{}/{}",
+            env::var("ORC_DATAFILES_PATH").unwrap_or("./data/dicom".to_string()),
+            p
+        ))
+        .unwrap();
+        client_modality_one().upload(&data).unwrap();
+    }
+
+    // Execute a query
     let resp = client_main()
         .modality_find(
             "modality-one",
             EntityKind::Instance,
-            hashmap! {"SOPInstanceUID".to_string() => MOVE_SOP_INSTANCE_UID.to_string()},
+            hashmap! {"StudyInstanceUID".to_string() => QR_STUDY_INSTANCE_UID.to_string()},
             None,
         )
         .unwrap();
@@ -1797,11 +1847,93 @@ fn test_modaliy_find() {
     );
 
     // Check query answers
-    assert_eq!(client_main().query_answers(&query_id).unwrap(), vec!["0"]);
+    assert_eq!(
+        client_main().query_answers(&query_id).unwrap(),
+        vec!["0", "1"]
+    );
 
     // Check query answer
     assert_eq!(
         json!(client_main().query_answer(&query_id, "0").unwrap()),
         expected_response(&format!("queries/{}/answers/0/content", query_id))
     );
+
+    // Verify that the instance is not on the target (ourselves)
+    let instances = client_main().instances_expanded().unwrap();
+    let sop_instance_uids: Vec<&str> = instances
+        .iter()
+        .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
+        .collect();
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_2));
+
+    // Retrieve
+    client_main()
+        .retrieve_query_answer(
+            &query_id,
+            "0",
+            if sysinfo.api_version <= 6 {
+                Some("ORTHANC")
+            } else {
+                None
+            },
+        )
+        .unwrap();
+
+    // Verify that the instance is on the target
+    let instances = client_main().instances_expanded().unwrap();
+    let sop_instance_uids: Vec<&str> = instances
+        .iter()
+        .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
+        .collect();
+    assert!(sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
+
+    // Verify that the instance is not on the target (modality_two)
+    let instances = client_modality_two().instances_expanded().unwrap();
+    let sop_instance_uids: Vec<&str> = instances
+        .iter()
+        .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
+        .collect();
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
+
+    // Retrieve
+    client_main()
+        .retrieve_query_answer(&query_id, "0", Some("MODALITY_TWO"))
+        .unwrap();
+
+    // Verify that the instance is on the target
+    let instances = client_modality_two().instances_expanded().unwrap();
+    let sop_instance_uids: Vec<&str> = instances
+        .iter()
+        .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
+        .collect();
+    assert!(sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
+
+    // Verify that the other instance is not on the target (ourselves)
+    let instances = client_main().instances_expanded().unwrap();
+    let sop_instance_uids: Vec<&str> = instances
+        .iter()
+        .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
+        .collect();
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_2));
+
+    // Retrieve all
+    client_main()
+        .retrieve_query_answers(
+            &query_id,
+            if sysinfo.api_version <= 6 {
+                Some("ORTHANC")
+            } else {
+                None
+            },
+        )
+        .unwrap();
+
+    // Verify that the other instance is on the target
+    let instances = client_main().instances_expanded().unwrap();
+    let sop_instance_uids: Vec<&str> = instances
+        .iter()
+        .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
+        .collect();
+    assert!(sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_2));
 }

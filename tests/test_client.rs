@@ -3243,3 +3243,81 @@ fn test_get_query_answer() {
     assert_eq!(resp, expected_resp);
     assert_eq!(m.times_called(), 1);
 }
+
+#[test]
+fn test_retrieve_query_answer() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/queries/foo/answers/0/retrieve")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let resp = cl.retrieve_query_answer("foo", "0", None).unwrap();
+
+    assert_eq!(resp, ());
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_retrieve_query_answer_with_target_aet() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/queries/foo/answers/0/retrieve")
+        .expect_body(r#"{"TargetAet":"BAZ"}"#)
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let resp = cl.retrieve_query_answer("foo", "0", Some("BAZ")).unwrap();
+
+    assert_eq!(resp, ());
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_retrieve_query_answers() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/queries/foo/retrieve")
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let resp = cl.retrieve_query_answers("foo", None).unwrap();
+
+    assert_eq!(resp, ());
+    assert_eq!(m.times_called(), 1);
+}
+
+#[test]
+fn test_retrieve_query_answers_with_target_aet() {
+    let mock_server = MockServer::start();
+    let url = mock_server.url("");
+
+    let m = Mock::new()
+        .expect_method(Method::POST)
+        .expect_path("/queries/foo/retrieve")
+        .expect_body(r#"{"TargetAet":"BAZ"}"#)
+        .return_status(200)
+        .return_header("Content-Type", "application/json")
+        .create_on(&mock_server);
+
+    let cl = Client::new(url);
+    let resp = cl.retrieve_query_answers("foo", Some("BAZ")).unwrap();
+
+    assert_eq!(resp, ());
+    assert_eq!(m.times_called(), 1);
+}
