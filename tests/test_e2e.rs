@@ -1724,6 +1724,9 @@ fn _test_move() {
 
 #[test]
 fn test_modality_find() {
+    // Get system info
+    let sysinfo = client_main().system().unwrap();
+
     // Create modality_one
     let modality_one = Modality {
         aet: "MODALITY_ONE".to_string(),
@@ -1866,7 +1869,15 @@ fn test_modality_find() {
 
     // Retrieve
     client_main()
-        .retrieve_query_answer(&query_id, "0", None)
+        .retrieve_query_answer(
+            &query_id,
+            "0",
+            if sysinfo.api_version <= 6 {
+                Some("ORTHANC")
+            } else {
+                None
+            },
+        )
         .unwrap();
 
     // Verify that the instance is on the target
@@ -1908,7 +1919,14 @@ fn test_modality_find() {
 
     // Retrieve all
     client_main()
-        .retrieve_query_answers(&query_id, None)
+        .retrieve_query_answers(
+            &query_id,
+            if sysinfo.api_version <= 6 {
+                Some("ORTHANC")
+            } else {
+                None
+            },
+        )
         .unwrap();
 
     // Verify that the other instance is on the target

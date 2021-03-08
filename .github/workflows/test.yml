@@ -67,8 +67,7 @@ jobs:
     name: e2e_test
     strategy:
       matrix:
-        #orthanc: [1.6.1, 1.7.4, 1.8.2, 1.9.1]
-        orthanc: [1.7.4, 1.8.2, 1.9.1]
+        orthanc: [1.6.1, 1.7.4, 1.8.2, 1.9.1]
     services:
       orthanc_main:
         image: jodogne/orthanc:${{ matrix.orthanc }}
