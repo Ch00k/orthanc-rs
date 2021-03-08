@@ -27,10 +27,14 @@ const PATIENT_ID: &str = "patient_2";
 const UPLOAD_INSTANCE_FILE_PATH: &str = "upload";
 
 const MOVE_INSTANCE_FILE_PATH: &str = "move";
-const MOVE2_INSTANCE_FILE_PATH: &str = "move2";
 const MOVE_STUDY_INSTANCE_UID: &str = "99.88.77.66.5.4.3.2.1.0";
 const MOVE_SOP_INSTANCE_UID: &str = "1.3.46.670589.11.1.5.0.10176.2012103017543590042";
-const MOVE2_SOP_INSTANCE_UID: &str = "1.2.3.4.5.6789.1742";
+
+const QR_INSTANCE1_FILE_PATH: &str = "qr1";
+const QR_INSTANCE2_FILE_PATH: &str = "qr2";
+const QR_STUDY_INSTANCE_UID: &str = "1.2.3.4.5678.909";
+const QR_SOP_INSTANCE_UID_1: &str = "1.2.3.4.5.6789.1742";
+const QR_SOP_INSTANCE_UID_2: &str = "1.2.3.4.5.6789.1743";
 
 const DEIDENTIFICATION_TAG_PATTERN: &str =
     r"Orthanc\s\d+.\d+.\d+\s-\sPS\s3.15-2017c\sTable\sE.1-1\sBasic\sProfile";
@@ -1107,7 +1111,7 @@ fn test_get_dicom_tag_value_instance() {
 }
 
 #[test]
-fn test_modalities() {
+fn _test_modalities() {
     // Get system info
     let sysinfo = client_main().system().unwrap();
     let mut allow_transcoding = None;
@@ -1553,7 +1557,7 @@ fn _test_search_instances_in_patient_level() {
 }
 
 #[test]
-fn test_move() {
+fn _test_move() {
     // Create modality_one
     let modality_one = Modality {
         aet: "MODALITY_ONE".to_string(),
@@ -1797,7 +1801,7 @@ fn test_modaliy_find() {
         .unwrap();
 
     // Upload instances to modality_one
-    for p in vec![MOVE_INSTANCE_FILE_PATH, MOVE2_INSTANCE_FILE_PATH] {
+    for p in vec![QR_INSTANCE1_FILE_PATH, QR_INSTANCE2_FILE_PATH] {
         let data = fs::read(format!(
             "{}/{}",
             env::var("ORC_DATAFILES_PATH").unwrap_or("./data/dicom".to_string()),
@@ -1812,7 +1816,7 @@ fn test_modaliy_find() {
         .modality_find(
             "modality-one",
             EntityKind::Instance,
-            hashmap! {"StudyInstanceUID".to_string() => MOVE_STUDY_INSTANCE_UID.to_string()},
+            hashmap! {"StudyInstanceUID".to_string() => QR_STUDY_INSTANCE_UID.to_string()},
             None,
         )
         .unwrap();
@@ -1857,8 +1861,8 @@ fn test_modaliy_find() {
         .iter()
         .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
         .collect();
-    assert!(!sop_instance_uids.contains(&MOVE_SOP_INSTANCE_UID));
-    assert!(!sop_instance_uids.contains(&MOVE2_SOP_INSTANCE_UID));
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_2));
 
     // Retrieve
     client_main()
@@ -1871,7 +1875,7 @@ fn test_modaliy_find() {
         .iter()
         .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
         .collect();
-    assert!(sop_instance_uids.contains(&MOVE_SOP_INSTANCE_UID));
+    assert!(sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
 
     // Verify that the instance is not on the target (modality_two)
     let instances = client_modality_two().instances_expanded().unwrap();
@@ -1879,7 +1883,7 @@ fn test_modaliy_find() {
         .iter()
         .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
         .collect();
-    assert!(!sop_instance_uids.contains(&MOVE_SOP_INSTANCE_UID));
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
 
     // Retrieve
     client_main()
@@ -1892,7 +1896,7 @@ fn test_modaliy_find() {
         .iter()
         .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
         .collect();
-    assert!(sop_instance_uids.contains(&MOVE_SOP_INSTANCE_UID));
+    assert!(sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_1));
 
     // Verify that the other instance is not on the target (ourselves)
     let instances = client_main().instances_expanded().unwrap();
@@ -1900,7 +1904,7 @@ fn test_modaliy_find() {
         .iter()
         .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
         .collect();
-    assert!(!sop_instance_uids.contains(&MOVE2_SOP_INSTANCE_UID));
+    assert!(!sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_2));
 
     // Retrieve all
     client_main()
@@ -1913,5 +1917,5 @@ fn test_modaliy_find() {
         .iter()
         .map(|i| i.main_dicom_tag("SOPInstanceUID").unwrap())
         .collect();
-    assert!(sop_instance_uids.contains(&MOVE2_SOP_INSTANCE_UID));
+    assert!(sop_instance_uids.contains(&QR_SOP_INSTANCE_UID_2));
 }
