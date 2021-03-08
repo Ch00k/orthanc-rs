@@ -938,6 +938,27 @@ mod tests {
     }
 
     #[test]
+    fn test_post_no_body() {
+        let mock_server = MockServer::start();
+        let url = mock_server.url("");
+
+        let m = Mock::new()
+            .expect_method(Method::POST)
+            .expect_path("/foo")
+            .expect_header("Authorization", "Basic Zm9vOmJhcg==")
+            .return_header("Content-Type", "application/json")
+            .return_status(200)
+            .return_body("baz")
+            .create_on(&mock_server);
+
+        let cl = Client::new(url).auth("foo", "bar");
+        let resp = cl.post("foo", None).unwrap();
+
+        assert_eq!(resp, "baz");
+        assert_eq!(m.times_called(), 1);
+    }
+
+    #[test]
     fn test_post_receive_stream() {
         let mock_server = MockServer::start();
         let url = mock_server.url("");
