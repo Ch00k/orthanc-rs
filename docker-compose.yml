@@ -2,22 +2,22 @@ version: "3"
 
 services:
   orthanc_main:
-    image: jodogne/orthanc:1.9.0
+    image: jodogne/orthanc:1.9.1
     ports:
       - 127.0.0.1:${ORTHANC_MAIN_PORT:-8028}:8042
 
   orthanc_peer:
-    image: jodogne/orthanc:1.9.0
+    image: jodogne/orthanc:1.9.1
     ports:
       - 127.0.0.1:${ORTHANC_PEER_PORT:-8029}:8042
 
   modality_one:
-    image: jodogne/orthanc:1.9.0
+    image: jodogne/orthanc:1.9.1
     ports:
       - 127.0.0.1:${ORTHANC_MODALITY_ONE_PORT:-8021}:8042
 
   modality_two:
-    image: jodogne/orthanc:1.9.0
+    image: jodogne/orthanc:1.9.1
     ports:
       - 127.0.0.1:${ORTHANC_MODALITY_TWO_PORT:-8022}:8042
 
