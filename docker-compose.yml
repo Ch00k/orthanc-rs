@@ -4,22 +4,22 @@ services:
   orthanc_main:
     image: jodogne/orthanc:1.9.0
     ports:
-      - "127.0.0.1:${ORTHANC_MAIN_PORT:-8028}:8042"
+      - 127.0.0.1:${ORTHANC_MAIN_PORT:-8028}:8042
 
   orthanc_peer:
     image: jodogne/orthanc:1.9.0
     ports:
-      - "127.0.0.1:${ORTHANC_PEER_PORT:-8029}:8042"
+      - 127.0.0.1:${ORTHANC_PEER_PORT:-8029}:8042
 
   modality_one:
     image: jodogne/orthanc:1.9.0
     ports:
-      - "127.0.0.1:${ORTHANC_MODALITY_ONE_PORT:-8021}:8042"
+      - 127.0.0.1:${ORTHANC_MODALITY_ONE_PORT:-8021}:8042
 
   modality_two:
     image: jodogne/orthanc:1.9.0
     ports:
-      - "127.0.0.1:${ORTHANC_MODALITY_TWO_PORT:-8022}:8042"
+      - 127.0.0.1:${ORTHANC_MODALITY_TWO_PORT:-8022}:8042
 
   dino:
     image: ch00k/dino
@@ -28,4 +28,4 @@ services:
       DINO_SCP_PORT: ${DINO_SCP_PORT:-5252}
       DINO_SCP_AET: ${DINO_SCP_AET:-DINO}
     ports:
-      - "127.0.0.1:5252:5252"
+      - 127.0.0.1:5252:5252
