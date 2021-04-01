@@ -1,5 +1,6 @@
 use crate::entity::EntityKind;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
 /// System
@@ -20,6 +21,7 @@ pub struct System {
 }
 
 /// Modality
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Modality {
@@ -27,84 +29,65 @@ pub struct Modality {
     pub aet: String,
     pub host: String,
     pub port: i32,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub manufacturer: Option<String>,
     #[serde(rename = "AllowEcho")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_c_echo: Option<bool>,
     #[serde(rename = "AllowFind")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_c_find: Option<bool>,
     #[serde(rename = "AllowGet")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_c_get: Option<bool>,
     #[serde(rename = "AllowMove")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_c_move: Option<bool>,
     #[serde(rename = "AllowStore")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_c_store: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_n_action: Option<bool>,
     #[serde(rename = "AllowEventReport")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_n_event_report: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_transcoding: Option<bool>,
 }
 
 /// Peer
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Peer {
     pub url: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
     // https://bugs.orthanc-server.com/show_bug.cgi?id=191
     // TODO: Make a custom serializer/deserializer that would deal with differing types
-    #[serde(skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(skip_deserializing)]
     pub http_headers: Option<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub certificate_file: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub certificate_key_file: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub certificate_key_password: Option<String>,
 }
 
 /// Anonymization request body
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Anonymization {
     #[serde(rename(serialize = "Replace"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub replace: Option<HashMap<String, String>>,
     #[serde(rename(serialize = "Keep"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keep: Option<Vec<String>>,
     #[serde(rename(serialize = "KeepPrivateTags"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub keep_private_tags: Option<bool>,
     #[serde(rename(serialize = "DicomVersion"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub dicom_version: Option<String>,
     #[serde(rename(serialize = "Force"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub force: Option<bool>,
 }
 
 /// Modification request body
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Modification {
     #[serde(rename(serialize = "Replace"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub replace: Option<HashMap<String, String>>,
     #[serde(rename(serialize = "Remove"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub remove: Option<Vec<String>>,
     #[serde(rename(serialize = "Force"))]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub force: Option<bool>,
 }
 
@@ -145,24 +128,23 @@ pub struct Search {
 }
 
 /// Modality C-MOVE request body
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ModalityMove {
     pub level: EntityKind,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub target_aet: Option<String>,
     pub resources: Vec<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout: Option<i32>,
 }
 
 /// Modality C-FIND request body
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct ModalityFind {
     pub level: EntityKind,
     pub query: HashMap<String, String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub normalize: Option<bool>,
 }
 
