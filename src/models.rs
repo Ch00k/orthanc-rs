@@ -1,5 +1,8 @@
 use crate::entity::EntityKind;
+use crate::utils::{serde_datetime, serde_datetime_optional};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
@@ -214,6 +217,56 @@ pub struct ModificationResult {
     pub path: String,
     #[serde(rename = "Type")]
     pub entity: EntityKind,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct AsyncResult {
+    #[serde(rename = "ID")]
+    pub id: String,
+    pub path: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+pub enum JobState {
+    Pending,
+    Running,
+    Success,
+    Failure,
+    Paused,
+    Retry,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+pub enum JobKind {
+    Archive,
+    ResourceModification,
+    DicomModalityStore,
+    DicomMoveScu,
+}
+
+/// Asynchronous job
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Job {
+    #[serde(rename = "ID")]
+    pub id: String,
+    #[serde(rename = "Type")]
+    pub kind: JobKind,
+    pub state: JobState,
+    pub priority: u32,
+    pub progress: u8,
+    pub content: Value,
+    #[serde(with = "serde_datetime")]
+    pub timestamp: NaiveDateTime,
+    #[serde(with = "serde_datetime")]
+    pub creation_time: NaiveDateTime,
+    #[serde(default)]
+    #[serde(with = "serde_datetime_optional")]
+    pub completion_time: Option<NaiveDateTime>,
+    pub effective_runtime: f64,
+    pub error_code: u16,
+    pub error_description: String,
 }
 
 #[cfg(test)]

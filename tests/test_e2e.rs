@@ -582,6 +582,40 @@ fn test_modify_series() {
 }
 
 #[test]
+fn test_modify_series_async() {
+    let series = find_series_by_series_instance_uid(SERIES_INSTANCE_UID).unwrap();
+    let tags = series.main_dicom_tags;
+    assert_ne!(tags["BodyPartExamined"], "PINKY");
+    assert_ne!(tags["OperatorsName"], "Summer Smith");
+    assert!(tags.contains_key("StationName"));
+    assert!(tags.contains_key("SeriesDate"));
+
+    let replace = hashmap! {
+        "BodyPartExamined".to_string() => "PINKY".to_string(),
+        "OperatorsName".to_string() => "Summer Smith".to_string()
+    };
+    let remove = vec!["StationName".to_string(), "SeriesDate".to_string()];
+    let modification = Modification {
+        replace: Some(replace),
+        remove: Some(remove),
+        force: None,
+    };
+    let resp = client_main()
+        .modify_series_async(&series.id, modification)
+        .unwrap();
+    println!("{:#?}", resp);
+    let jobs = client_main().jobs_expanded().unwrap();
+    println!("{:#?}", jobs);
+    //let modified_series = client_main().series(&resp.id).unwrap();
+    //let modified_tags = modified_series.main_dicom_tags;
+
+    //assert_eq!(modified_tags["BodyPartExamined"], "PINKY");
+    //assert_eq!(modified_tags["OperatorsName"], "Summer Smith");
+    //assert!(!modified_tags.contains_key("StationName"));
+    //assert!(!modified_tags.contains_key("SeriesDate"));
+}
+
+#[test]
 fn test_modify_study() {
     let study = find_study_by_study_instance_uid(STUDY_INSTANCE_UID).unwrap();
     let tags = study.main_dicom_tags;

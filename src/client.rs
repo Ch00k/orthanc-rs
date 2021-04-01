@@ -222,6 +222,35 @@ impl Client {
         Ok(json)
     }
 
+    fn anonymize_async(
+        &self,
+        entity: &str,
+        id: &str,
+        anonymization: Option<Anonymization>,
+    ) -> Result<ModificationResult> {
+        let data = match anonymization {
+            Some(a) => a,
+            // TODO: Just pass an empty object?
+            None => Anonymization {
+                replace: None,
+                keep: None,
+                keep_private_tags: None,
+                dicom_version: None,
+                force: None,
+            },
+        };
+        let mut data = serde_json::to_value(data)?;
+        if let Value::Object(o) = &mut data {
+            o.insert("Asynchronous".to_string(), json!(true));
+        };
+        let resp = self.post(
+            &format!("{}/{}/anonymize", entity, id),
+            Some(serde_json::to_value(data)?),
+        )?;
+        let json: ModificationResult = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
     fn modify(
         &self,
         entity: &str,
@@ -233,6 +262,21 @@ impl Client {
             Some(serde_json::to_value(modification)?),
         )?;
         let json: ModificationResult = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    fn modify_async(
+        &self,
+        entity: &str,
+        id: &str,
+        modification: Modification,
+    ) -> Result<AsyncResult> {
+        let mut data = serde_json::to_value(modification)?;
+        if let Value::Object(o) = &mut data {
+            o.insert("Asynchronous".to_string(), json!(true));
+        };
+        let resp = self.post(&format!("{}/{}/modify", entity, id), Some(data))?;
+        let json: AsyncResult = serde_json::from_slice(&resp)?;
         Ok(json)
     }
 
@@ -588,6 +632,15 @@ impl Client {
         self.modify("series", id, modification)
     }
 
+    /// Modify a series
+    pub fn modify_series_async(
+        &self,
+        id: &str,
+        modification: Modification,
+    ) -> Result<AsyncResult> {
+        self.modify_async("series", id, modification)
+    }
+
     /// Delete a series
     pub fn delete_series(&self, id: &str) -> Result<RemainingAncestor> {
         let resp = self.delete(&format!("series/{}", id))?;
@@ -814,6 +867,50 @@ impl Client {
             }),
         )
         .map(|_| ())
+    }
+
+    ////////// Jobs //////////
+
+    /// List jobs
+    pub fn jobs(&self) -> Result<Vec<String>> {
+        let resp = self.get("jobs")?;
+        let json: Vec<String> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// List jobs
+    pub fn jobs_expanded(&self) -> Result<Vec<Job>> {
+        let resp = self.get("jobs?expand")?;
+        let json: Vec<Job> = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// Get a job by its ID
+    pub fn job(&self, id: &str) -> Result<Job> {
+        let resp = self.get(&format!("jobs/{}", id))?;
+        let json: Job = serde_json::from_slice(&resp)?;
+        Ok(json)
+    }
+
+    /// Cancel a job
+    pub fn cancel_job(&self, id: &str) -> Result<()> {
+        self.post(&format!("jobs/{}/cancel", id), None).map(|_| ())
+    }
+
+    /// Pause a job
+    pub fn pause_job(&self, id: &str) -> Result<()> {
+        self.post(&format!("jobs/{}/pause", id), None).map(|_| ())
+    }
+
+    /// Resume paused a job
+    pub fn resume_job(&self, id: &str) -> Result<()> {
+        self.post(&format!("jobs/{}/resume", id), None).map(|_| ())
+    }
+
+    /// Resubmit a failed a job
+    pub fn resubmit_job(&self, id: &str) -> Result<()> {
+        self.post(&format!("jobs/{}/resubmit", id), None)
+            .map(|_| ())
     }
 
     ////////// Orther //////////

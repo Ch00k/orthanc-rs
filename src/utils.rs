@@ -12,6 +12,65 @@ pub(crate) fn check_http_error(status: reqwest::StatusCode, body: Bytes) -> Resu
     Ok(body)
 }
 
+pub(crate) mod serde_datetime {
+    use chrono::NaiveDateTime;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    const FORMAT: &str = "%Y%m%dT%H%M%S";
+    const FORMAT_MKS: &str = "%Y%m%dT%H%M%S.%6f";
+
+    pub fn serialize<S>(date: &NaiveDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        return serializer.serialize_str(&date.format(FORMAT).to_string());
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        NaiveDateTime::parse_from_str(&s, FORMAT).or_else(|_| {
+            NaiveDateTime::parse_from_str(&s, FORMAT_MKS).map_err(serde::de::Error::custom)
+        })
+    }
+}
+
+pub(crate) mod serde_datetime_optional {
+    use chrono::NaiveDateTime;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    const FORMAT: &str = "%Y%m%dT%H%M%S.%6f";
+
+    pub fn serialize<S>(
+        date: &Option<NaiveDateTime>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(ref d) = *date {
+            return serializer.serialize_str(&d.format(FORMAT).to_string());
+        }
+        serializer.serialize_none()
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<NaiveDateTime>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: Option<String> = Option::deserialize(deserializer)?;
+        if let Some(s) = s {
+            return Ok(Some(
+                NaiveDateTime::parse_from_str(&s, FORMAT)
+                    .map_err(serde::de::Error::custom)?,
+            ));
+        }
+        Ok(None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,3 +1,4 @@
+use crate::utils::serde_datetime;
 use crate::Error;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -99,7 +100,7 @@ pub struct Patient {
     #[serde(rename = "ID")]
     pub id: String,
     pub is_stable: bool,
-    #[serde(with = "datetime_format")]
+    #[serde(with = "serde_datetime")]
     pub last_update: NaiveDateTime,
     pub main_dicom_tags: HashMap<String, String>,
     pub studies: Vec<String>,
@@ -148,7 +149,7 @@ pub struct Study {
     #[serde(rename = "ID")]
     pub id: String,
     pub is_stable: bool,
-    #[serde(with = "datetime_format")]
+    #[serde(with = "serde_datetime")]
     pub last_update: NaiveDateTime,
     pub main_dicom_tags: HashMap<String, String>,
     pub parent_patient: String,
@@ -213,7 +214,7 @@ pub struct Series {
     pub id: String,
     pub status: String,
     pub is_stable: bool,
-    #[serde(with = "datetime_format")]
+    #[serde(with = "serde_datetime")]
     pub last_update: NaiveDateTime,
     pub main_dicom_tags: HashMap<String, String>,
     pub parent_study: String,
@@ -317,29 +318,6 @@ impl Entity for Instance {
     /// Size of the instance file
     fn size(&self) -> u64 {
         self.file_size
-    }
-}
-
-mod datetime_format {
-    use chrono::NaiveDateTime;
-    use serde::{self, Deserialize, Deserializer, Serializer};
-
-    const FORMAT: &str = "%Y%m%dT%H%M%S";
-
-    pub fn serialize<S>(date: &NaiveDateTime, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let s = format!("{}", date.format(FORMAT));
-        serializer.serialize_str(&s)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
     }
 }
 
