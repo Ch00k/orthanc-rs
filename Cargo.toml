@@ -22,7 +22,7 @@ serde_with = "1.8"
 
 [dev-dependencies]
 dicom-object = "0.3"
-httpmock = "0.4"
+httpmock = "0.6"
 maplit = "1.0"
 regex = "1.4"
 zip = "0.5"
